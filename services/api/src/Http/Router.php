@@ -14,6 +14,11 @@ final class Router
         $this->add('GET', $path, $handler);
     }
 
+    public function post(string $path, callable $handler): void
+    {
+        $this->add('POST', $path, $handler);
+    }
+
     public function add(string $method, string $path, callable $handler): void
     {
         $normalizedMethod = strtoupper($method);
