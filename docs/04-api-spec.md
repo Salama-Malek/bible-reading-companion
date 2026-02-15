@@ -79,6 +79,8 @@ All endpoints use this error envelope:
 Common error codes:
 
 - `VALIDATION_ERROR` → `400`
+- `EMAIL_TAKEN` → `409`
+- `INVALID_CREDENTIALS` → `401`
 - `UNAUTHORIZED` → `401`
 - `FORBIDDEN` → `403`
 - `NOT_FOUND` → `404`
@@ -116,8 +118,7 @@ Common error codes:
       "id": 101,
       "name": "John Doe",
       "email": "john@example.com",
-      "role": "user",
-      "createdAt": "2026-01-15T07:30:00Z"
+      "role": "user"
     },
     "token": "<jwt_access_token>"
   }
@@ -125,7 +126,7 @@ Common error codes:
 ```
 
 - **Error format (standard):** Uses global standard error envelope.
-- **Status codes:** `201`, `400`, `409`, `500`.
+- **Status codes:** `201`, `400`, `409` (`EMAIL_TAKEN`), `500`.
 
 ### `POST /auth/login`
 
@@ -150,8 +151,7 @@ Common error codes:
       "id": 101,
       "name": "John Doe",
       "email": "john@example.com",
-      "role": "user",
-      "createdAt": "2026-01-15T07:30:00Z"
+      "role": "user"
     },
     "token": "<jwt_access_token>"
   }
@@ -159,7 +159,7 @@ Common error codes:
 ```
 
 - **Error format (standard):** Uses global standard error envelope.
-- **Status codes:** `200`, `400`, `401`, `500`.
+- **Status codes:** `200`, `400`, `401` (`INVALID_CREDENTIALS`), `500`.
 
 ### `GET /auth/me`
 
@@ -176,8 +176,7 @@ Common error codes:
       "id": 101,
       "name": "John Doe",
       "email": "john@example.com",
-      "role": "user",
-      "createdAt": "2026-01-15T07:30:00Z"
+      "role": "user"
     }
   }
 }
@@ -264,7 +263,7 @@ Common error codes:
 ```
 
 - **Error format (standard):** Uses global standard error envelope.
-- **Status codes:** `200`, `400`, `401`, `500`.
+- **Status codes:** `200`, `400`, `401` (`INVALID_CREDENTIALS`), `500`.
 
 ## READING (user)
 
@@ -345,7 +344,7 @@ Common error codes:
 ```
 
 - **Error format (standard):** Uses global standard error envelope.
-- **Status codes:** `200`, `400`, `401`, `500`.
+- **Status codes:** `200`, `400`, `401` (`INVALID_CREDENTIALS`), `500`.
 
 ## SAVED VERSES (user)
 
@@ -474,7 +473,7 @@ Common error codes:
 ```
 
 - **Error format (standard):** Uses global standard error envelope.
-- **Status codes:** `200`, `400`, `401`, `500`.
+- **Status codes:** `200`, `400`, `401` (`INVALID_CREDENTIALS`), `500`.
 
 ### `POST /devices/unregister`
 

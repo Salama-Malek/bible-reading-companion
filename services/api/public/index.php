@@ -18,6 +18,11 @@ require_once $basePath . '/src/Env.php';
 require_once $basePath . '/src/Http/Request.php';
 require_once $basePath . '/src/Http/Response.php';
 require_once $basePath . '/src/Http/Router.php';
+require_once $basePath . '/src/Auth/Password.php';
+require_once $basePath . '/src/Auth/Jwt.php';
+require_once $basePath . '/src/Auth/AuthService.php';
+require_once $basePath . '/src/Middleware/AuthMiddleware.php';
+require_once $basePath . '/src/Middleware/RequireRole.php';
 require_once $basePath . '/src/Middleware/MiddlewareStack.php';
 
 Env::load($basePath);
