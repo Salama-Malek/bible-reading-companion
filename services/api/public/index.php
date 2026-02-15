@@ -2,20 +2,33 @@
 
 declare(strict_types=1);
 
-function jsonResponse(array $payload, int $status = 200): void
-{
-    http_response_code($status);
-    header('Content-Type: application/json');
+use Api\Config;
+use Api\Env;
+use Api\Http\Request;
+use Api\Http\Router;
+use Api\Middleware\MiddlewareStack;
 
-    echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-}
+$basePath = dirname(__DIR__);
 
-$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
-$path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+require_once $basePath . '/src/Utils/Json.php';
+require_once $basePath . '/src/Config.php';
+require_once $basePath . '/src/Env.php';
+require_once $basePath . '/src/Http/Request.php';
+require_once $basePath . '/src/Http/Response.php';
+require_once $basePath . '/src/Http/Router.php';
+require_once $basePath . '/src/Middleware/MiddlewareStack.php';
 
-if ($method === 'GET' && $path === '/health') {
-    jsonResponse(['ok' => true]);
-    return;
-}
+Env::load($basePath);
 
-jsonResponse(['error' => 'Not Found'], 404);
+Config::appEnv();
+Config::appUrl();
+
+$router = new Router();
+$registerRoutes = require $basePath . '/routes.php';
+$registerRoutes($router);
+
+$request = Request::fromGlobals();
+$stack = new MiddlewareStack();
+$stack->handle($request, static function (Request $req) use ($router): void {
+    $router->dispatch($req);
+});

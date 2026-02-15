@@ -30,17 +30,19 @@ This starts the Vite development server for the admin placeholder page.
 
 ```bash
 cd services/api
-php -S localhost:8000 -t public
+php -S 127.0.0.1:8080 -t public
 ```
 
 Health check endpoint:
 
 ```bash
-curl http://localhost:8000/health
+curl http://127.0.0.1:8080/health
 ```
+
+This service uses plain PHP (no framework).
 
 Expected response:
 
 ```json
-{"ok":true}
+{"ok":true,"data":{"service":"api"}}
 ```
