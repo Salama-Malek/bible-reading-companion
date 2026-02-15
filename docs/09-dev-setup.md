@@ -11,10 +11,10 @@
 ```bash
 cd apps/mobile
 npm install
-npm run start
+npx expo start
 ```
 
-This starts Expo (Expo Router app) and allows running on iOS, Android, or web from the Expo UI.
+This starts the Expo Router mobile app (Home + History tabs).
 
 ## Admin Web (`apps/admin-web`)
 
@@ -24,7 +24,7 @@ npm install
 npm run dev
 ```
 
-This starts the Vite dev server for the admin web placeholder app.
+This starts the Vite development server for the admin placeholder page.
 
 ## API Service (`services/api`)
 
