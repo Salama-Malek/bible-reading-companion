@@ -189,8 +189,8 @@ Common error codes:
 
 ### `GET /plans/today`
 
-- **Purpose:** Return today’s reading plan for current user (based on `Europe/Riga`).
-- **Auth required?** Yes.
+- **Purpose:** Return today’s reading plan (based on `Europe/Riga`).
+- **Auth required?** No (optional for now).
 - **Request JSON:** None.
 - **Response JSON (success `200 OK`):**
 
@@ -198,31 +198,27 @@ Common error codes:
 {
   "ok": true,
   "data": {
-    "date": "2026-01-15",
     "plan": {
       "id": 450,
       "date": "2026-01-15",
+      "testament": "new",
       "book": "Matthew",
       "chapter": 5,
-      "verses": "1-16",
-      "title": "Sermon on the Mount (Part 1)",
-      "notes": null
-    },
-    "completion": {
-      "completed": false,
-      "completedAt": null
+      "created_at": "2026-01-01T00:00:00Z"
     }
   }
 }
 ```
 
+If no plan exists for today, `plan` is `null`.
+
 - **Error format (standard):** Uses global standard error envelope.
-- **Status codes:** `200`, `401`, `404`, `500`.
+- **Status codes:** `200`, `500`.
 
-### `GET /plans?from=YYYY-MM-DD&to=YYYY-MM-DD&page=1&pageSize=20`
+### `GET /plans?from=YYYY-MM-DD&to=YYYY-MM-DD`
 
-- **Purpose:** Return reading plans in a date range for current user.
-- **Auth required?** Yes.
+- **Purpose:** Return reading plans in a date range.
+- **Auth required?** No (optional for now).
 - **Request JSON:** None (query params only).
 - **Response JSON (success `200 OK`):**
 
@@ -230,40 +226,30 @@ Common error codes:
 {
   "ok": true,
   "data": {
-    "from": "2026-01-01",
-    "to": "2026-01-31",
-    "items": [
+    "plans": [
       {
         "id": 436,
         "date": "2026-01-01",
+        "testament": "new",
         "book": "Matthew",
         "chapter": 1,
-        "verses": "1-25",
-        "title": "Genealogy and birth",
-        "notes": null
+        "created_at": "2026-01-01T00:00:00Z"
       },
       {
         "id": 437,
         "date": "2026-01-02",
+        "testament": "new",
         "book": "Matthew",
         "chapter": 2,
-        "verses": "1-23",
-        "title": "Visit of the Magi",
-        "notes": null
+        "created_at": "2026-01-01T00:00:00Z"
       }
-    ],
-    "pagination": {
-      "page": 1,
-      "pageSize": 20,
-      "totalItems": 31,
-      "totalPages": 2
-    }
+    ]
   }
 }
 ```
 
 - **Error format (standard):** Uses global standard error envelope.
-- **Status codes:** `200`, `400`, `401` (`INVALID_CREDENTIALS`), `500`.
+- **Status codes:** `200`, `400`, `500`.
 
 ## READING (user)
 

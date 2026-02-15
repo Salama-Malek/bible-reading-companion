@@ -11,6 +11,7 @@ use Api\Middleware\MiddlewareStack;
 $basePath = dirname(__DIR__);
 
 require_once $basePath . '/src/Utils/Json.php';
+require_once $basePath . '/src/Utils/Date.php';
 require_once $basePath . '/src/Config.php';
 require_once $basePath . '/src/Db/Db.php';
 require_once $basePath . '/src/Db/Query.php';
@@ -24,6 +25,7 @@ require_once $basePath . '/src/Auth/AuthService.php';
 require_once $basePath . '/src/Middleware/AuthMiddleware.php';
 require_once $basePath . '/src/Middleware/RequireRole.php';
 require_once $basePath . '/src/Middleware/MiddlewareStack.php';
+require_once $basePath . '/src/Controllers/PlansController.php';
 
 Env::load($basePath);
 
