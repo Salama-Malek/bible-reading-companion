@@ -86,6 +86,7 @@ Common error codes:
 - `NOT_FOUND` → `404`
 - `CONFLICT` → `409`
 - `DUPLICATE_DATE` → `409`
+- `PLAN_NOT_FOUND` → `404`
 - `RATE_LIMITED` → `429`
 - `INTERNAL_ERROR` → `500`
 
@@ -256,17 +257,19 @@ If no plan exists for today, `plan` is `null`.
 
 ### `POST /reading/complete`
 
-- **Purpose:** Mark a plan as completed for current user.
+- **Purpose:** Mark the reading plan for a specific date as completed for current user.
 - **Auth required?** Yes.
 - **Request JSON:**
 
 ```json
 {
-  "planId": 450,
   "date": "2026-01-15",
-  "completedAt": "2026-01-15T19:14:22Z"
+  "method": "physical"
 }
 ```
+
+- `method` must be one of: `physical`, `digital`.
+- `date` is interpreted as the `reading_plan.date` value (date-only, no timezone conversion in this endpoint).
 
 - **Response JSON (success `200 OK`):**
 
@@ -276,22 +279,23 @@ If no plan exists for today, `plan` is `null`.
   "data": {
     "record": {
       "id": 9001,
-      "userId": 101,
-      "planId": 450,
-      "date": "2026-01-15",
-      "completed": true,
-      "completedAt": "2026-01-15T19:14:22Z"
+      "user_id": 101,
+      "plan_id": 450,
+      "method": "physical",
+      "completed_at": "2026-01-15T19:14:22Z"
     }
   }
 }
 ```
 
+- If a completion already exists for `(user_id, plan_id)`, endpoint is idempotent and returns existing record.
+- If no plan exists for the provided date, returns `PLAN_NOT_FOUND`.
 - **Error format (standard):** Uses global standard error envelope.
-- **Status codes:** `200`, `400`, `401`, `404`, `409`, `500`.
+- **Status codes:** `200`, `400`, `401`, `404` (`PLAN_NOT_FOUND`), `500`.
 
-### `GET /reading/history?from=YYYY-MM-DD&to=YYYY-MM-DD&page=1&pageSize=20`
+### `GET /reading/history?from=YYYY-MM-DD&to=YYYY-MM-DD`
 
-- **Purpose:** Return reading completion history in date range for current user.
+- **Purpose:** Return plans and current user completion data in date range, plus streak summary.
 - **Auth required?** Yes.
 - **Request JSON:** None (query params only).
 - **Response JSON (success `200 OK`):**
@@ -300,38 +304,41 @@ If no plan exists for today, `plan` is `null`.
 {
   "ok": true,
   "data": {
-    "from": "2026-01-01",
-    "to": "2026-01-31",
-    "items": [
+    "plans": [
       {
-        "id": 9001,
-        "userId": 101,
-        "planId": 436,
+        "id": 436,
         "date": "2026-01-01",
-        "completed": true,
-        "completedAt": "2026-01-01T06:21:00Z"
-      },
-      {
-        "id": 9002,
-        "userId": 101,
-        "planId": 437,
-        "date": "2026-01-02",
-        "completed": true,
-        "completedAt": "2026-01-02T08:12:00Z"
+        "testament": "new",
+        "book": "Matthew",
+        "chapter": 1,
+        "created_at": "2026-01-01T00:00:00Z"
       }
     ],
-    "pagination": {
-      "page": 1,
-      "pageSize": 20,
-      "totalItems": 24,
-      "totalPages": 2
+    "records": [
+      {
+        "id": 9001,
+        "user_id": 101,
+        "plan_id": 436,
+        "method": "digital",
+        "completed_at": "2026-01-01T06:21:00Z",
+        "date": "2026-01-01"
+      }
+    ],
+    "missedDates": [
+      "2026-01-02"
+    ],
+    "summary": {
+      "completedCount": 1,
+      "missedCount": 1,
+      "currentStreak": 0,
+      "longestStreak": 1
     }
   }
 }
 ```
 
 - **Error format (standard):** Uses global standard error envelope.
-- **Status codes:** `200`, `400`, `401` (`INVALID_CREDENTIALS`), `500`.
+- **Status codes:** `200`, `400`, `401`, `500`.
 
 ## SAVED VERSES (user)
 

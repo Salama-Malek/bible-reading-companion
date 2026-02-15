@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Api\Auth\AuthService;
 use Api\Controllers\AdminPlansController;
 use Api\Controllers\PlansController;
+use Api\Controllers\ReadingController;
 use Api\Db\Query;
 use Api\Http\Request;
 use Api\Http\Response;
@@ -17,6 +18,7 @@ return static function (Router $router): void {
     $authMiddleware = new AuthMiddleware($authService);
     $plansController = new PlansController();
     $adminPlansController = new AdminPlansController();
+    $readingController = new ReadingController();
     $requireAdmin = new RequireRole('admin');
 
     $router->get('/health', static function (Request $request): void {
@@ -193,4 +195,17 @@ return static function (Router $router): void {
             ]);
         });
     });
+
+    $router->post('/reading/complete', static function (Request $request) use ($authMiddleware, $readingController): void {
+        $authMiddleware($request, static function (Request $authedRequest) use ($readingController): void {
+            $readingController->complete($authedRequest);
+        });
+    });
+
+    $router->get('/reading/history', static function (Request $request) use ($authMiddleware, $readingController): void {
+        $authMiddleware($request, static function (Request $authedRequest) use ($readingController): void {
+            $readingController->history($authedRequest);
+        });
+    });
+
 };
