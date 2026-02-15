@@ -344,18 +344,19 @@ If no plan exists for today, `plan` is `null`.
 
 ### `POST /verses`
 
-- **Purpose:** Save a verse/note for current user.
+- **Purpose:** Save a verse reference/note for current user.
 - **Auth required?** Yes.
 - **Request JSON:**
 
 ```json
 {
-  "reference": "John 3:16",
-  "text": "For God so loved the world...",
+  "date": "2026-01-15",
+  "referenceText": "Matthew 1:1-5",
   "note": "Encouragement for today"
 }
 ```
 
+- `date` is optional. When present, API tries to resolve `plan_id` from `reading_plan.date`; if not found, save still succeeds with `plan_id = null`.
 - **Response JSON (success `201 Created`):**
 
 ```json
@@ -364,16 +365,17 @@ If no plan exists for today, `plan` is `null`.
   "data": {
     "verse": {
       "id": 301,
-      "userId": 101,
-      "reference": "John 3:16",
-      "text": "For God so loved the world...",
+      "user_id": 101,
+      "plan_id": 450,
+      "reference_text": "Matthew 1:1-5",
       "note": "Encouragement for today",
-      "createdAt": "2026-01-15T19:20:00Z"
+      "created_at": "2026-01-15T19:20:00Z"
     }
   }
 }
 ```
 
+- **Validation:** `referenceText` required, max length `100`; `note` optional.
 - **Error format (standard):** Uses global standard error envelope.
 - **Status codes:** `201`, `400`, `401`, `500`.
 
@@ -391,25 +393,22 @@ If no plan exists for today, `plan` is `null`.
     "items": [
       {
         "id": 301,
-        "userId": 101,
-        "reference": "John 3:16",
-        "text": "For God so loved the world...",
+        "user_id": 101,
+        "plan_id": 450,
+        "reference_text": "Matthew 1:1-5",
         "note": "Encouragement for today",
-        "createdAt": "2026-01-15T19:20:00Z"
+        "created_at": "2026-01-15T19:20:00Z"
       }
     ],
-    "pagination": {
-      "page": 1,
-      "pageSize": 20,
-      "totalItems": 1,
-      "totalPages": 1
-    }
+    "page": 1,
+    "pageSize": 20,
+    "total": 1
   }
 }
 ```
 
 - **Error format (standard):** Uses global standard error envelope.
-- **Status codes:** `200`, `401`, `500`.
+- **Status codes:** `200`, `400`, `401`, `500`.
 
 ### `DELETE /verses/:id`
 
@@ -422,14 +421,14 @@ If no plan exists for today, `plan` is `null`.
 {
   "ok": true,
   "data": {
-    "deleted": true,
-    "id": 301
+    "deleted": true
   }
 }
 ```
 
+- If record is missing or owned by another user, API returns `NOT_FOUND`.
 - **Error format (standard):** Uses global standard error envelope.
-- **Status codes:** `200`, `401`, `404`, `500`.
+- **Status codes:** `200`, `400`, `401`, `404`, `500`.
 
 ## DEVICES (user)
 
@@ -862,11 +861,11 @@ If no plan exists for today, `plan` is `null`.
 ```json
 {
   "id": 301,
-  "userId": 101,
-  "reference": "John 3:16",
-  "text": "For God so loved the world...",
+  "user_id": 101,
+  "plan_id": 450,
+  "reference_text": "Matthew 1:1-5",
   "note": "Encouragement for today",
-  "createdAt": "2026-01-15T19:20:00Z"
+  "created_at": "2026-01-15T19:20:00Z"
 }
 ```
 
