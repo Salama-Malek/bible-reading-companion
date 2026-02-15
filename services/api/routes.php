@@ -3,17 +3,21 @@
 declare(strict_types=1);
 
 use Api\Auth\AuthService;
+use Api\Controllers\AdminPlansController;
 use Api\Controllers\PlansController;
 use Api\Db\Query;
 use Api\Http\Request;
 use Api\Http\Response;
 use Api\Http\Router;
 use Api\Middleware\AuthMiddleware;
+use Api\Middleware\RequireRole;
 
 return static function (Router $router): void {
     $authService = new AuthService();
     $authMiddleware = new AuthMiddleware($authService);
     $plansController = new PlansController();
+    $adminPlansController = new AdminPlansController();
+    $requireAdmin = new RequireRole('admin');
 
     $router->get('/health', static function (Request $request): void {
         Response::success([
@@ -137,6 +141,47 @@ return static function (Router $router): void {
 
     $router->get('/plans', static function (Request $request) use ($plansController): void {
         $plansController->range($request);
+    });
+
+
+    $router->post('/admin/plans', static function (Request $request) use ($authMiddleware, $requireAdmin, $adminPlansController): void {
+        $authMiddleware($request, static function (Request $authedRequest) use ($requireAdmin, $adminPlansController): void {
+            $requireAdmin($authedRequest, static function (Request $adminRequest) use ($adminPlansController): void {
+                $adminPlansController->create($adminRequest);
+            });
+        });
+    });
+
+    $router->get('/admin/plans', static function (Request $request) use ($authMiddleware, $requireAdmin, $adminPlansController): void {
+        $authMiddleware($request, static function (Request $authedRequest) use ($requireAdmin, $adminPlansController): void {
+            $requireAdmin($authedRequest, static function (Request $adminRequest) use ($adminPlansController): void {
+                $adminPlansController->list($adminRequest);
+            });
+        });
+    });
+
+    $router->put('/admin/plans/:id', static function (Request $request) use ($authMiddleware, $requireAdmin, $adminPlansController): void {
+        $authMiddleware($request, static function (Request $authedRequest) use ($requireAdmin, $adminPlansController): void {
+            $requireAdmin($authedRequest, static function (Request $adminRequest) use ($adminPlansController): void {
+                $adminPlansController->update($adminRequest);
+            });
+        });
+    });
+
+    $router->delete('/admin/plans/:id', static function (Request $request) use ($authMiddleware, $requireAdmin, $adminPlansController): void {
+        $authMiddleware($request, static function (Request $authedRequest) use ($requireAdmin, $adminPlansController): void {
+            $requireAdmin($authedRequest, static function (Request $adminRequest) use ($adminPlansController): void {
+                $adminPlansController->delete($adminRequest);
+            });
+        });
+    });
+
+    $router->post('/admin/plans/bulk-import', static function (Request $request) use ($authMiddleware, $requireAdmin, $adminPlansController): void {
+        $authMiddleware($request, static function (Request $authedRequest) use ($requireAdmin, $adminPlansController): void {
+            $requireAdmin($authedRequest, static function (Request $adminRequest) use ($adminPlansController): void {
+                $adminPlansController->bulkImport($adminRequest);
+            });
+        });
     });
 
     $router->get('/auth/me', static function (Request $request) use ($authMiddleware): void {

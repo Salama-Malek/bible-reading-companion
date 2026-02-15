@@ -85,6 +85,7 @@ Common error codes:
 - `FORBIDDEN` → `403`
 - `NOT_FOUND` → `404`
 - `CONFLICT` → `409`
+- `DUPLICATE_DATE` → `409`
 - `RATE_LIMITED` → `429`
 - `INTERNAL_ERROR` → `500`
 
@@ -889,3 +890,65 @@ If no plan exists for today, `plan` is `null`.
   "completionRateToday": 68.64
 }
 ```
+
+## ADMIN PLANS (admin)
+
+All `/admin/*` endpoints require a valid JWT and `role=admin`.
+
+### `POST /admin/plans`
+
+- **Purpose:** Create a single reading plan entry.
+- **Auth required?** Yes (`admin` only).
+- **Request JSON:**
+
+```json
+{
+  "date": "2026-01-15",
+  "testament": "new",
+  "book": "Matthew",
+  "chapter": 5
+}
+```
+
+- **Status codes:** `201`, `400`, `401`, `403`, `409` (`DUPLICATE_DATE`), `500`.
+
+### `GET /admin/plans?from=YYYY-MM-DD&to=YYYY-MM-DD`
+
+- **Purpose:** List plans in date range ordered ascending by date.
+- **Auth required?** Yes (`admin` only).
+- **Status codes:** `200`, `400`, `401`, `403`, `500`.
+
+### `PUT /admin/plans/:id`
+
+- **Purpose:** Update plan by id.
+- **Auth required?** Yes (`admin` only).
+- **Status codes:** `200`, `400`, `401`, `403`, `404`, `409` (`DUPLICATE_DATE`), `500`.
+
+### `DELETE /admin/plans/:id`
+
+- **Purpose:** Delete plan by id.
+- **Auth required?** Yes (`admin` only).
+- **Status codes:** `200`, `400`, `401`, `403`, `404`, `500`.
+
+### `POST /admin/plans/bulk-import`
+
+- **Purpose:** Bulk upsert plans by date in one DB transaction.
+- **Auth required?** Yes (`admin` only).
+- **Request JSON:**
+
+```json
+{
+  "entries": [
+    {
+      "date": "2026-01-15",
+      "testament": "new",
+      "book": "Matthew",
+      "chapter": 5
+    }
+  ]
+}
+```
+
+- **Response summary fields:** `insertedCount`, `updatedCount`, `failedCount`, `failures`.
+- **Validation per entry:** date valid, testament in `old|new`, non-empty book, positive integer chapter.
+- **Status codes:** `200`, `400`, `401`, `403`, `500`.
