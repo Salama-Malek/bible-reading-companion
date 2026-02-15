@@ -1,137 +1,144 @@
 # Data Model
 
-This document describes the MySQL schema for the Bible Reading Companion backend.
+This document describes the MySQL 8+ data model for Bible Reading Companion.
 
 ## Tables
 
 ### `users`
-Stores application users and authorization role.
+Application user accounts.
 
-| Column | Type | Notes |
-|---|---|---|
-| `id` | `BIGINT UNSIGNED` | Primary key, auto-increment. |
-| `email` | `VARCHAR(255)` | Unique login identifier. |
-| `password_hash` | `VARCHAR(255)` | Password hash (never plain text). |
-| `role` | `VARCHAR(32)` | Role string (for example: `user`, `admin`). |
-| `created_at` | `TIMESTAMP` | Record creation time. |
+- `id`: `BIGINT UNSIGNED` primary key, auto-increment.
+- `email`: `VARCHAR(255)` unique, required.
+- `password_hash`: `VARCHAR(255)` required.
+- `name`: `VARCHAR(120)` optional display name.
+- `role`: `ENUM('user','admin')`, defaults to `user`.
+- `created_at`: creation timestamp.
 
-Indexes/constraints:
+Key constraints:
 - `PRIMARY KEY (id)`
 - `UNIQUE (email)`
-- index on `created_at`
-
----
 
 ### `reading_plan`
-Stores one daily reading assignment.
+Canonical daily reading assignment, one row per calendar date.
 
-| Column | Type | Notes |
-|---|---|---|
-| `id` | `BIGINT UNSIGNED` | Primary key, auto-increment. |
-| `date` | `DATE` | Reading date, unique per day. |
-| `testament` | `VARCHAR(16)` | `OT` or `NT`. |
-| `book` | `VARCHAR(64)` | Bible book name. |
-| `chapter` | `INT UNSIGNED` | Chapter number. |
-| `created_at` | `TIMESTAMP` | Record creation time. |
+- `id`: `BIGINT UNSIGNED` primary key, auto-increment.
+- `date`: `DATE` unique, required.
+- `testament`: `ENUM('old','new')`, required.
+- `book`: `VARCHAR(80)`, required.
+- `chapter`: `INT`, required.
+- `created_at`: creation timestamp.
 
-Indexes/constraints:
+Key constraints:
 - `PRIMARY KEY (id)`
-- `UNIQUE (date)` to enforce exactly one reading per day
-- composite lookup index on `(date, testament, book, chapter)` for today-plan fetches
-
----
+- `UNIQUE (date)` (also serves as index for date lookup)
 
 ### `reading_records`
-Tracks completion records for users against the daily plan.
+Tracks completion of a plan item by a user.
 
-| Column | Type | Notes |
-|---|---|---|
-| `id` | `BIGINT UNSIGNED` | Primary key, auto-increment. |
-| `user_id` | `BIGINT UNSIGNED` | FK to `users.id`. |
-| `plan_id` | `BIGINT UNSIGNED` | FK to `reading_plan.id`. |
-| `method` | `VARCHAR(32)` | Completion method (e.g. `manual`, `voice`). |
-| `completed_at` | `TIMESTAMP` | Completion timestamp. |
+- `id`: `BIGINT UNSIGNED` primary key, auto-increment.
+- `user_id`: FK to `users.id`.
+- `plan_id`: FK to `reading_plan.id`.
+- `method`: `ENUM('physical','digital')`.
+- `completed_at`: completion timestamp.
 
-Indexes/constraints:
+Key constraints:
 - `PRIMARY KEY (id)`
-- `UNIQUE (user_id, plan_id)` so each user can complete each plan once
-- index on `(user_id, completed_at)` for user reading history queries
-- index on `plan_id`
-- FKs:
-  - `user_id -> users.id` (`ON DELETE CASCADE`)
-  - `plan_id -> reading_plan.id` (`ON DELETE CASCADE`)
-
----
+- `UNIQUE (user_id, plan_id)`
+- `INDEX (user_id, completed_at)`
+- `INDEX (plan_id)`
+- `FOREIGN KEY user_id -> users.id ON DELETE CASCADE`
+- `FOREIGN KEY plan_id -> reading_plan.id ON DELETE CASCADE`
 
 ### `saved_verses`
-Stores user-saved verse references and notes.
+User-saved references and notes.
 
-| Column | Type | Notes |
-|---|---|---|
-| `id` | `BIGINT UNSIGNED` | Primary key, auto-increment. |
-| `user_id` | `BIGINT UNSIGNED` | FK to `users.id`. |
-| `plan_id` | `BIGINT UNSIGNED` | FK to `reading_plan.id`. |
-| `reference_text` | `VARCHAR(128)` | Verse reference (for example `Matthew 1:21`). |
-| `note` | `TEXT` | Optional user note. |
-| `created_at` | `TIMESTAMP` | Record creation time. |
+- `id`: `BIGINT UNSIGNED` primary key, auto-increment.
+- `user_id`: FK to `users.id`.
+- `plan_id`: nullable FK to `reading_plan.id`.
+- `reference_text`: `VARCHAR(100)` (example: `Matthew 1:1-5`).
+- `note`: optional `TEXT`.
+- `created_at`: creation timestamp.
 
-Indexes/constraints:
+Key constraints:
 - `PRIMARY KEY (id)`
-- index on `(user_id, created_at)` for per-user saved-verse history
-- index on `plan_id`
-- FKs:
-  - `user_id -> users.id` (`ON DELETE CASCADE`)
-  - `plan_id -> reading_plan.id` (`ON DELETE CASCADE`)
-
----
+- `INDEX (user_id, created_at)`
+- `FOREIGN KEY user_id -> users.id ON DELETE CASCADE`
+- `FOREIGN KEY plan_id -> reading_plan.id ON DELETE SET NULL`
 
 ### `user_devices`
-Stores push notification targets per user device.
+Push notification registrations per user device.
 
-| Column | Type | Notes |
-|---|---|---|
-| `id` | `BIGINT UNSIGNED` | Primary key, auto-increment. |
-| `user_id` | `BIGINT UNSIGNED` | FK to `users.id`. |
-| `push_token` | `VARCHAR(255)` | Unique push token. |
-| `platform` | `VARCHAR(32)` | Device platform (`ios`, `android`, etc.). |
-| `created_at` | `TIMESTAMP` | Record creation time. |
+- `id`: `BIGINT UNSIGNED` primary key, auto-increment.
+- `user_id`: FK to `users.id`.
+- `push_token`: `VARCHAR(255)` unique.
+- `platform`: `ENUM('android','ios','web')`.
+- `created_at`: creation timestamp.
 
-Indexes/constraints:
+Key constraints:
 - `PRIMARY KEY (id)`
 - `UNIQUE (push_token)`
-- index on `user_id`
-- FK `user_id -> users.id` (`ON DELETE CASCADE`)
-
----
+- `INDEX (user_id)`
+- `FOREIGN KEY user_id -> users.id ON DELETE CASCADE`
 
 ### `announcements`
-Stores admin-authored announcement messages.
+Admin-created announcements shown to users.
 
-| Column | Type | Notes |
-|---|---|---|
-| `id` | `BIGINT UNSIGNED` | Primary key, auto-increment. |
-| `title` | `VARCHAR(255)` | Announcement title. |
-| `body` | `TEXT` | Announcement content. |
-| `created_at` | `TIMESTAMP` | Creation timestamp. |
-| `created_by` | `BIGINT UNSIGNED` | FK to `users.id` (admin user). |
+- `id`: `BIGINT UNSIGNED` primary key, auto-increment.
+- `title`: `VARCHAR(140)`.
+- `body`: `TEXT`.
+- `created_at`: creation timestamp.
+- `created_by`: FK to `users.id`.
 
-Indexes/constraints:
+Key constraints:
 - `PRIMARY KEY (id)`
-- index on `created_at` for reverse-chronological listing
-- index on `created_by`
-- FK `created_by -> users.id` (`ON DELETE RESTRICT`)
+- `INDEX (created_at)`
+- `FOREIGN KEY created_by -> users.id ON DELETE RESTRICT`
 
-## Relationships overview
+### `bible_books`
+Bible book catalog used by verse storage.
+
+- `id`: `SMALLINT UNSIGNED` primary key, auto-increment.
+- `testament`: `ENUM('old','new')`.
+- `name`: unique canonical book name.
+- `display_name`: display label for UI.
+- `sort_order`: ordering value within full canon.
+
+Key constraints:
+- `PRIMARY KEY (id)`
+- `UNIQUE (name)`
+- `INDEX (testament, sort_order)`
+
+### `bible_verses`
+Bible verse text keyed by book/chapter/verse.
+
+- `id`: `BIGINT UNSIGNED` primary key, auto-increment.
+- `book_id`: FK to `bible_books.id`.
+- `chapter`: `SMALLINT UNSIGNED`.
+- `verse`: `SMALLINT UNSIGNED`.
+- `text`: verse text.
+
+Key constraints:
+- `PRIMARY KEY (id)`
+- `UNIQUE (book_id, chapter, verse)`
+- `INDEX (book_id, chapter)`
+- `FOREIGN KEY book_id -> bible_books.id ON DELETE CASCADE`
+
+## Relationships
 
 - `users` 1:N `reading_records`
 - `users` 1:N `saved_verses`
 - `users` 1:N `user_devices`
 - `users` 1:N `announcements` (via `created_by`)
 - `reading_plan` 1:N `reading_records`
-- `reading_plan` 1:N `saved_verses`
+- `reading_plan` 1:N `saved_verses` (nullable reference)
+- `bible_books` 1:N `bible_verses`
 
-## Query patterns covered by indexes
+## "Today" plan lookup and timezone
 
-- **Today plan query**: `reading_plan` lookup by `date` (unique index + lookup composite index).
-- **User history query**: `reading_records` lookup by `user_id` ordered/filter by `completed_at`.
-- **Saved verses history**: `saved_verses` lookup by `user_id` ordered/filter by `created_at`.
+The source-of-truth key for daily assignments is `reading_plan.date` (`DATE`, no timezone). The API layer is responsible for timezone-aware "today" resolution:
+
+1. Determine the user's effective timezone (profile setting, device timezone, or app default).
+2. Compute today's local date in that timezone.
+3. Query `reading_plan` by that computed local `DATE` value.
+
+This keeps schema design simple and deterministic while ensuring users in different timezones can receive the correct daily chapter.

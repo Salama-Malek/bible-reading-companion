@@ -1,1 +1,6 @@
-﻿{}
+{
+  "_comment": "Bulk reading plan template. Set startDate and add one object per day in entries.",
+  "_commentEntryShape": "Each entry should look like: { \"date\": \"YYYY-MM-DD\", \"testament\": \"old|new\", \"book\": \"Book Name\", \"chapter\": 1 }",
+  "startDate": "YYYY-MM-DD",
+  "entries": []
+}
