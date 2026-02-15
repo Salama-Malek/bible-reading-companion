@@ -6,6 +6,7 @@ use Api\Auth\AuthService;
 use Api\Controllers\AdminPlansController;
 use Api\Controllers\PlansController;
 use Api\Controllers\ReadingController;
+use Api\Controllers\VersesController;
 use Api\Db\Query;
 use Api\Http\Request;
 use Api\Http\Response;
@@ -19,6 +20,7 @@ return static function (Router $router): void {
     $plansController = new PlansController();
     $adminPlansController = new AdminPlansController();
     $readingController = new ReadingController();
+    $versesController = new VersesController();
     $requireAdmin = new RequireRole('admin');
 
     $router->get('/health', static function (Request $request): void {
@@ -193,6 +195,24 @@ return static function (Router $router): void {
             Response::success([
                 'user' => $user,
             ]);
+        });
+    });
+
+    $router->post('/verses', static function (Request $request) use ($authMiddleware, $versesController): void {
+        $authMiddleware($request, static function (Request $authedRequest) use ($versesController): void {
+            $versesController->create($authedRequest);
+        });
+    });
+
+    $router->get('/verses', static function (Request $request) use ($authMiddleware, $versesController): void {
+        $authMiddleware($request, static function (Request $authedRequest) use ($versesController): void {
+            $versesController->list($authedRequest);
+        });
+    });
+
+    $router->delete('/verses/:id', static function (Request $request) use ($authMiddleware, $versesController): void {
+        $authMiddleware($request, static function (Request $authedRequest) use ($versesController): void {
+            $versesController->delete($authedRequest);
         });
     });
 
