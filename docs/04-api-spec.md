@@ -1,40 +1,53 @@
-# API Specification v1 (Draft)
+# API Specification v1
 
-Status: contract-first draft for MVP. Endpoints are documented for implementation planning; behavior may be refined during build.
+Status: contract-first specification for implementation. This document is the **single source of truth** for backend, mobile, and admin integrations.
 
-## Base Information
+## 1) Global Conventions
 
-- Base URL (production): `https://<your-domain>/api/v1`
-- Content type: `application/json`
-- Timezone: `Europe/Amsterdam`
+### Base URL
+
+- Production: `https://<your-domain>/api/v1`
+- Staging (example): `https://staging.<your-domain>/api/v1`
+
+### Headers
+
+Required for JSON endpoints:
+
+```http
+Content-Type: application/json
+```
+
+Required for authenticated endpoints:
+
+```http
+Authorization: Bearer <token>
+```
+
+### Date and Time Rules
+
 - Date format: `YYYY-MM-DD`
-- Date-time format: ISO 8601 UTC, example `2026-01-15T07:30:00Z`
+- Date-time format: ISO 8601 UTC (e.g. `2026-01-15T07:30:00Z`)
+- Timezone used to compute **today**: `Europe/Riga`
 
----
+### Pagination (list endpoints)
 
-## Authentication
+List endpoints support query params:
 
-### Header Format (Bearer Token)
+- `page` (optional, default `1`, min `1`)
+- `pageSize` (optional, default `20`, min `1`, max `100`)
 
-Authenticated endpoints require:
+Paginated response metadata format:
 
-```http
-Authorization: Bearer <access_token>
+```json
+{
+  "page": 1,
+  "pageSize": 20,
+  "totalItems": 125,
+  "totalPages": 7
+}
 ```
 
-Example:
-
-```http
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
-```
-
-If missing/invalid/expired, return `401 Unauthorized`.
-
----
-
-## Standard Response Envelope
-
-### Success
+### Standard Success Envelope
 
 ```json
 {
@@ -43,7 +56,9 @@ If missing/invalid/expired, return `401 Unauthorized`.
 }
 ```
 
-### Error Format
+### Standard Error Format
+
+All endpoints use this error envelope:
 
 ```json
 {
@@ -63,25 +78,25 @@ If missing/invalid/expired, return `401 Unauthorized`.
 
 Common error codes:
 
-- `VALIDATION_ERROR` (400)
-- `UNAUTHORIZED` (401)
-- `FORBIDDEN` (403)
-- `NOT_FOUND` (404)
-- `CONFLICT` (409)
-- `RATE_LIMITED` (429)
-- `INTERNAL_ERROR` (500)
+- `VALIDATION_ERROR` → `400`
+- `UNAUTHORIZED` → `401`
+- `FORBIDDEN` → `403`
+- `NOT_FOUND` → `404`
+- `CONFLICT` → `409`
+- `RATE_LIMITED` → `429`
+- `INTERNAL_ERROR` → `500`
 
 ---
 
-## User Authentication
+## 2) Endpoint Contracts
+
+## AUTH
 
 ### `POST /auth/register`
 
-Create a user account.
-
-Auth: Public
-
-Request body:
+- **Purpose:** Register a new user account.
+- **Auth required?** No.
+- **Request JSON:**
 
 ```json
 {
@@ -91,7 +106,7 @@ Request body:
 }
 ```
 
-Success `201 Created`:
+- **Response JSON (success `201 Created`):**
 
 ```json
 {
@@ -101,27 +116,22 @@ Success `201 Created`:
       "id": 101,
       "name": "John Doe",
       "email": "john@example.com",
-      "role": "user"
+      "role": "user",
+      "createdAt": "2026-01-15T07:30:00Z"
     },
     "token": "<jwt_access_token>"
   }
 }
 ```
 
-Possible errors:
-
-- `400 VALIDATION_ERROR`
-- `409 CONFLICT` (email already exists)
-
----
+- **Error format (standard):** Uses global standard error envelope.
+- **Status codes:** `201`, `400`, `409`, `500`.
 
 ### `POST /auth/login`
 
-Authenticate user and return access token.
-
-Auth: Public
-
-Request body:
+- **Purpose:** Authenticate user and return access token.
+- **Auth required?** No.
+- **Request JSON:**
 
 ```json
 {
@@ -130,7 +140,7 @@ Request body:
 }
 ```
 
-Success `200 OK`:
+- **Response JSON (success `200 OK`):**
 
 ```json
 {
@@ -140,29 +150,50 @@ Success `200 OK`:
       "id": 101,
       "name": "John Doe",
       "email": "john@example.com",
-      "role": "user"
+      "role": "user",
+      "createdAt": "2026-01-15T07:30:00Z"
     },
     "token": "<jwt_access_token>"
   }
 }
 ```
 
-Possible errors:
+- **Error format (standard):** Uses global standard error envelope.
+- **Status codes:** `200`, `400`, `401`, `500`.
 
-- `400 VALIDATION_ERROR`
-- `401 UNAUTHORIZED` (invalid credentials)
+### `GET /auth/me`
 
----
+- **Purpose:** Return profile of currently authenticated user.
+- **Auth required?** Yes.
+- **Request JSON:** None.
+- **Response JSON (success `200 OK`):**
 
-## Reading Plans
+```json
+{
+  "ok": true,
+  "data": {
+    "user": {
+      "id": 101,
+      "name": "John Doe",
+      "email": "john@example.com",
+      "role": "user",
+      "createdAt": "2026-01-15T07:30:00Z"
+    }
+  }
+}
+```
+
+- **Error format (standard):** Uses global standard error envelope.
+- **Status codes:** `200`, `401`, `500`.
+
+## PLANS (user)
 
 ### `GET /plans/today`
 
-Get today’s assigned reading plan for authenticated user.
-
-Auth: User/Admin
-
-Success `200 OK`:
+- **Purpose:** Return today’s reading plan for current user (based on `Europe/Riga`).
+- **Auth required?** Yes.
+- **Request JSON:** None.
+- **Response JSON (success `200 OK`):**
 
 ```json
 {
@@ -171,9 +202,12 @@ Success `200 OK`:
     "date": "2026-01-15",
     "plan": {
       "id": 450,
+      "date": "2026-01-15",
       "book": "Matthew",
       "chapter": 5,
-      "title": "Sermon on the Mount (Part 1)"
+      "verses": "1-16",
+      "title": "Sermon on the Mount (Part 1)",
+      "notes": null
     },
     "completion": {
       "completed": false,
@@ -183,442 +217,299 @@ Success `200 OK`:
 }
 ```
 
-Possible errors:
+- **Error format (standard):** Uses global standard error envelope.
+- **Status codes:** `200`, `401`, `404`, `500`.
 
-- `401 UNAUTHORIZED`
-- `404 NOT_FOUND` (no plan assigned for today)
+### `GET /plans?from=YYYY-MM-DD&to=YYYY-MM-DD&page=1&pageSize=20`
 
----
-
-### `GET /plans?from=YYYY-MM-DD&to=YYYY-MM-DD`
-
-Get plans in date range.
-
-Auth: User/Admin
-
-Query params:
-
-- `from` (required)
-- `to` (required)
-
-Success `200 OK`:
+- **Purpose:** Return reading plans in a date range for current user.
+- **Auth required?** Yes.
+- **Request JSON:** None (query params only).
+- **Response JSON (success `200 OK`):**
 
 ```json
 {
   "ok": true,
   "data": {
     "from": "2026-01-01",
-    "to": "2026-01-07",
+    "to": "2026-01-31",
     "items": [
       {
+        "id": 436,
         "date": "2026-01-01",
-        "planId": 436,
         "book": "Matthew",
         "chapter": 1,
-        "title": "Genealogy and birth"
+        "verses": "1-25",
+        "title": "Genealogy and birth",
+        "notes": null
       },
       {
+        "id": 437,
         "date": "2026-01-02",
-        "planId": 437,
         "book": "Matthew",
         "chapter": 2,
-        "title": "Visit of the Magi"
-      }
-    ]
-  }
-}
-```
-
-Possible errors:
-
-- `400 VALIDATION_ERROR` (invalid/missing date params)
-- `401 UNAUTHORIZED`
-
----
-
-## Reading Completion & History
-
-### `POST /reading/complete`
-
-Mark reading as completed for a specific date (max one completion per user/day).
-
-Auth: User/Admin
-
-Request body:
-
-```json
-{
-  "date": "2026-01-15",
-  "method": "physical"
-}
-```
-
-`method` allowed values: `physical`, `digital`
-
-Success `201 Created`:
-
-```json
-{
-  "ok": true,
-  "data": {
-    "completionId": 3001,
-    "date": "2026-01-15",
-    "method": "physical",
-    "completedAt": "2026-01-15T07:28:00Z"
-  }
-}
-```
-
-Possible errors:
-
-- `400 VALIDATION_ERROR`
-- `401 UNAUTHORIZED`
-- `409 CONFLICT` (already completed for date)
-
----
-
-### `GET /reading/history?from=YYYY-MM-DD&to=YYYY-MM-DD`
-
-Return completion history and summary in date range.
-
-Auth: User/Admin
-
-Success `200 OK`:
-
-```json
-{
-  "ok": true,
-  "data": {
-    "from": "2026-01-01",
-    "to": "2026-01-15",
-    "summary": {
-      "completedDays": 12,
-      "missedDays": 3,
-      "currentStreak": 5,
-      "longestStreak": 9
-    },
-    "items": [
-      {
-        "date": "2026-01-14",
-        "status": "completed",
-        "method": "digital",
-        "completedAt": "2026-01-14T06:42:00Z"
-      },
-      {
-        "date": "2026-01-15",
-        "status": "missed",
-        "method": null,
-        "completedAt": null
-      }
-    ]
-  }
-}
-```
-
-Possible errors:
-
-- `400 VALIDATION_ERROR`
-- `401 UNAUTHORIZED`
-
----
-
-## Saved Verses
-
-### `POST /verses/save`
-
-Save a verse reference with optional note.
-
-Auth: User/Admin
-
-Request body:
-
-```json
-{
-  "book": "John",
-  "chapter": 3,
-  "verse": 16,
-  "note": "God's love and salvation"
-}
-```
-
-Success `201 Created`:
-
-```json
-{
-  "ok": true,
-  "data": {
-    "id": 9001,
-    "book": "John",
-    "chapter": 3,
-    "verse": 16,
-    "note": "God's love and salvation",
-    "createdAt": "2026-01-15T08:12:00Z"
-  }
-}
-```
-
-Possible errors:
-
-- `400 VALIDATION_ERROR`
-- `401 UNAUTHORIZED`
-
----
-
-### `GET /verses`
-
-Get authenticated user’s saved verses.
-
-Auth: User/Admin
-
-Optional query params:
-
-- `page` (default `1`)
-- `limit` (default `20`, max `100`)
-
-Success `200 OK`:
-
-```json
-{
-  "ok": true,
-  "data": {
-    "items": [
-      {
-        "id": 9001,
-        "book": "John",
-        "chapter": 3,
-        "verse": 16,
-        "note": "God's love and salvation",
-        "createdAt": "2026-01-15T08:12:00Z"
+        "verses": "1-23",
+        "title": "Visit of the Magi",
+        "notes": null
       }
     ],
     "pagination": {
       "page": 1,
-      "limit": 20,
-      "total": 1
+      "pageSize": 20,
+      "totalItems": 31,
+      "totalPages": 2
     }
   }
 }
 ```
 
-Possible errors:
+- **Error format (standard):** Uses global standard error envelope.
+- **Status codes:** `200`, `400`, `401`, `500`.
 
-- `401 UNAUTHORIZED`
+## READING (user)
 
----
+### `POST /reading/complete`
 
-### `DELETE /verses/:id`
+- **Purpose:** Mark a plan as completed for current user.
+- **Auth required?** Yes.
+- **Request JSON:**
 
-Delete a saved verse by id (owned by authenticated user).
+```json
+{
+  "planId": 450,
+  "date": "2026-01-15",
+  "completedAt": "2026-01-15T19:14:22Z"
+}
+```
 
-Auth: User/Admin
-
-Success `200 OK`:
+- **Response JSON (success `200 OK`):**
 
 ```json
 {
   "ok": true,
   "data": {
-    "deleted": true
+    "record": {
+      "id": 9001,
+      "userId": 101,
+      "planId": 450,
+      "date": "2026-01-15",
+      "completed": true,
+      "completedAt": "2026-01-15T19:14:22Z"
+    }
   }
 }
 ```
 
-Possible errors:
+- **Error format (standard):** Uses global standard error envelope.
+- **Status codes:** `200`, `400`, `401`, `404`, `409`, `500`.
 
-- `401 UNAUTHORIZED`
-- `404 NOT_FOUND` (verse not found or not owned by user)
+### `GET /reading/history?from=YYYY-MM-DD&to=YYYY-MM-DD&page=1&pageSize=20`
 
----
+- **Purpose:** Return reading completion history in date range for current user.
+- **Auth required?** Yes.
+- **Request JSON:** None (query params only).
+- **Response JSON (success `200 OK`):**
 
-## Device Registration
+```json
+{
+  "ok": true,
+  "data": {
+    "from": "2026-01-01",
+    "to": "2026-01-31",
+    "items": [
+      {
+        "id": 9001,
+        "userId": 101,
+        "planId": 436,
+        "date": "2026-01-01",
+        "completed": true,
+        "completedAt": "2026-01-01T06:21:00Z"
+      },
+      {
+        "id": 9002,
+        "userId": 101,
+        "planId": 437,
+        "date": "2026-01-02",
+        "completed": true,
+        "completedAt": "2026-01-02T08:12:00Z"
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "pageSize": 20,
+      "totalItems": 24,
+      "totalPages": 2
+    }
+  }
+}
+```
+
+- **Error format (standard):** Uses global standard error envelope.
+- **Status codes:** `200`, `400`, `401`, `500`.
+
+## SAVED VERSES (user)
+
+### `POST /verses`
+
+- **Purpose:** Save a verse/note for current user.
+- **Auth required?** Yes.
+- **Request JSON:**
+
+```json
+{
+  "reference": "John 3:16",
+  "text": "For God so loved the world...",
+  "note": "Encouragement for today"
+}
+```
+
+- **Response JSON (success `201 Created`):**
+
+```json
+{
+  "ok": true,
+  "data": {
+    "verse": {
+      "id": 301,
+      "userId": 101,
+      "reference": "John 3:16",
+      "text": "For God so loved the world...",
+      "note": "Encouragement for today",
+      "createdAt": "2026-01-15T19:20:00Z"
+    }
+  }
+}
+```
+
+- **Error format (standard):** Uses global standard error envelope.
+- **Status codes:** `201`, `400`, `401`, `500`.
+
+### `GET /verses?page=1&pageSize=20`
+
+- **Purpose:** Return saved verses for current user.
+- **Auth required?** Yes.
+- **Request JSON:** None.
+- **Response JSON (success `200 OK`):**
+
+```json
+{
+  "ok": true,
+  "data": {
+    "items": [
+      {
+        "id": 301,
+        "userId": 101,
+        "reference": "John 3:16",
+        "text": "For God so loved the world...",
+        "note": "Encouragement for today",
+        "createdAt": "2026-01-15T19:20:00Z"
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "pageSize": 20,
+      "totalItems": 1,
+      "totalPages": 1
+    }
+  }
+}
+```
+
+- **Error format (standard):** Uses global standard error envelope.
+- **Status codes:** `200`, `401`, `500`.
+
+### `DELETE /verses/:id`
+
+- **Purpose:** Delete a saved verse belonging to current user.
+- **Auth required?** Yes.
+- **Request JSON:** None.
+- **Response JSON (success `200 OK`):**
+
+```json
+{
+  "ok": true,
+  "data": {
+    "deleted": true,
+    "id": 301
+  }
+}
+```
+
+- **Error format (standard):** Uses global standard error envelope.
+- **Status codes:** `200`, `401`, `404`, `500`.
+
+## DEVICES (user)
 
 ### `POST /devices/register`
 
-Register or refresh mobile push device token.
-
-Auth: User/Admin
-
-Request body:
+- **Purpose:** Register/update device push token for current user.
+- **Auth required?** Yes.
+- **Request JSON:**
 
 ```json
 {
   "platform": "ios",
-  "deviceToken": "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]",
-  "appVersion": "1.0.0"
+  "pushToken": "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]",
+  "deviceId": "iphone14pro-abc123"
 }
 ```
 
-`platform` allowed values: `ios`, `android`, `web`
-
-Success `200 OK`:
+- **Response JSON (success `200 OK`):**
 
 ```json
 {
   "ok": true,
   "data": {
     "registered": true,
-    "deviceId": 77
+    "device": {
+      "id": 71,
+      "userId": 101,
+      "platform": "ios",
+      "pushToken": "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]",
+      "deviceId": "iphone14pro-abc123",
+      "updatedAt": "2026-01-15T19:30:00Z"
+    }
   }
 }
 ```
 
-Possible errors:
+- **Error format (standard):** Uses global standard error envelope.
+- **Status codes:** `200`, `400`, `401`, `500`.
 
-- `400 VALIDATION_ERROR`
-- `401 UNAUTHORIZED`
+### `POST /devices/unregister`
 
----
-
-## Admin Endpoints
-
-All `/admin/*` endpoints require role `admin`.
-
-### `POST /admin/plans` (Create)
-
-Create a plan entry for a date.
-
-Auth: Admin
-
-Request body:
+- **Purpose:** Unregister a device push token for current user.
+- **Auth required?** Yes.
+- **Request JSON:**
 
 ```json
 {
-  "date": "2026-01-20",
-  "book": "Matthew",
-  "chapter": 10,
-  "title": "Jesus sends the twelve"
+  "pushToken": "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]"
 }
 ```
 
-Success `201 Created`:
+- **Response JSON (success `200 OK`):**
 
 ```json
 {
   "ok": true,
   "data": {
-    "id": 460,
-    "date": "2026-01-20",
-    "book": "Matthew",
-    "chapter": 10,
-    "title": "Jesus sends the twelve"
+    "unregistered": true
   }
 }
 ```
 
-### Additional CRUD routes for plans
+- **Error format (standard):** Uses global standard error envelope.
+- **Status codes:** `200`, `400`, `401`, `404`, `500`.
 
-- `GET /admin/plans?from=YYYY-MM-DD&to=YYYY-MM-DD` (List)
-- `GET /admin/plans/:id` (Get one)
-- `PUT /admin/plans/:id` (Update)
-- `DELETE /admin/plans/:id` (Delete)
+## ANNOUNCEMENTS (user)
 
-CRUD errors:
+### `GET /announcements?page=1&pageSize=20`
 
-- `400 VALIDATION_ERROR`
-- `401 UNAUTHORIZED`
-- `403 FORBIDDEN`
-- `404 NOT_FOUND`
-- `409 CONFLICT` (duplicate date)
-
----
-
-### `GET /admin/analytics/today`
-
-Get today’s dashboard metrics.
-
-Auth: Admin
-
-Success `200 OK`:
-
-```json
-{
-  "ok": true,
-  "data": {
-    "date": "2026-01-15",
-    "totals": {
-      "users": 120,
-      "completedToday": 84,
-      "missingToday": 36,
-      "completionRate": 0.7
-    },
-    "streakLeaders": [
-      {
-        "userId": 101,
-        "name": "John Doe",
-        "streak": 15
-      }
-    ],
-    "inactiveUsers": [
-      {
-        "userId": 205,
-        "name": "Jane Smith",
-        "daysInactive": 8
-      }
-    ]
-  }
-}
-```
-
-Possible errors:
-
-- `401 UNAUTHORIZED`
-- `403 FORBIDDEN`
-
----
-
-### `POST /admin/announcements`
-
-Create announcement visible to users.
-
-Auth: Admin
-
-Request body:
-
-```json
-{
-  "title": "Youth Retreat Reminder",
-  "body": "Bring your Bible and notebook this Friday.",
-  "publishAt": "2026-01-16T09:00:00Z"
-}
-```
-
-Success `201 Created`:
-
-```json
-{
-  "ok": true,
-  "data": {
-    "id": 501,
-    "title": "Youth Retreat Reminder",
-    "body": "Bring your Bible and notebook this Friday.",
-    "publishAt": "2026-01-16T09:00:00Z",
-    "createdAt": "2026-01-15T08:30:00Z"
-  }
-}
-```
-
-Possible errors:
-
-- `400 VALIDATION_ERROR`
-- `401 UNAUTHORIZED`
-- `403 FORBIDDEN`
-
----
-
-## Announcements
-
-### `GET /announcements`
-
-Get published announcements for authenticated user.
-
-Auth: User/Admin
-
-Optional query params:
-
-- `page` (default `1`)
-- `limit` (default `20`)
-
-Success `200 OK`:
+- **Purpose:** Return active announcements visible to current user.
+- **Auth required?** Yes.
+- **Request JSON:** None.
+- **Response JSON (success `200 OK`):**
 
 ```json
 {
@@ -626,29 +517,390 @@ Success `200 OK`:
   "data": {
     "items": [
       {
-        "id": 501,
-        "title": "Youth Retreat Reminder",
-        "body": "Bring your Bible and notebook this Friday.",
-        "publishAt": "2026-01-16T09:00:00Z"
+        "id": 801,
+        "title": "Friday youth service",
+        "message": "Join us at 19:00 in the main hall.",
+        "startsAt": "2026-01-15T00:00:00Z",
+        "endsAt": "2026-01-17T21:00:00Z",
+        "createdAt": "2026-01-14T11:00:00Z"
       }
     ],
     "pagination": {
       "page": 1,
-      "limit": 20,
-      "total": 1
+      "pageSize": 20,
+      "totalItems": 1,
+      "totalPages": 1
     }
   }
 }
 ```
 
-Possible errors:
+- **Error format (standard):** Uses global standard error envelope.
+- **Status codes:** `200`, `401`, `500`.
 
-- `401 UNAUTHORIZED`
+## ADMIN (admin only)
+
+> All `/admin/*` endpoints require authenticated user with role `admin`.
+
+### `GET /admin/analytics/today`
+
+- **Purpose:** Return admin analytics snapshot for current day.
+- **Auth required?** Yes (admin).
+- **Request JSON:** None.
+- **Response JSON (success `200 OK`):**
+
+```json
+{
+  "ok": true,
+  "data": {
+    "date": "2026-01-15",
+    "timezone": "Europe/Riga",
+    "totalUsers": 220,
+    "activeToday": 151,
+    "missingToday": 69,
+    "inactive7d": 28,
+    "inactive14d": 14,
+    "completionRateToday": 68.64
+  }
+}
+```
+
+- **Error format (standard):** Uses global standard error envelope.
+- **Status codes:** `200`, `401`, `403`, `500`.
+
+### `GET /admin/users?status=active|missing_today|inactive_7d|inactive_14d&page=1&pageSize=20`
+
+- **Purpose:** List users by activity segment.
+- **Auth required?** Yes (admin).
+- **Request JSON:** None (query params only).
+- **Response JSON (success `200 OK`):**
+
+```json
+{
+  "ok": true,
+  "data": {
+    "status": "missing_today",
+    "items": [
+      {
+        "id": 101,
+        "name": "John Doe",
+        "email": "john@example.com",
+        "lastCompletedDate": "2026-01-14",
+        "lastCompletedAt": "2026-01-14T06:10:00Z"
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "pageSize": 20,
+      "totalItems": 69,
+      "totalPages": 4
+    }
+  }
+}
+```
+
+- **Error format (standard):** Uses global standard error envelope.
+- **Status codes:** `200`, `400`, `401`, `403`, `500`.
+
+### `POST /admin/plans`
+
+- **Purpose:** Create a single reading plan item.
+- **Auth required?** Yes (admin).
+- **Request JSON:**
+
+```json
+{
+  "date": "2026-01-20",
+  "book": "Matthew",
+  "chapter": 10,
+  "verses": "1-20",
+  "title": "Jesus sends the twelve",
+  "notes": "Optional note"
+}
+```
+
+- **Response JSON (success `201 Created`):**
+
+```json
+{
+  "ok": true,
+  "data": {
+    "plan": {
+      "id": 500,
+      "date": "2026-01-20",
+      "book": "Matthew",
+      "chapter": 10,
+      "verses": "1-20",
+      "title": "Jesus sends the twelve",
+      "notes": "Optional note",
+      "createdAt": "2026-01-15T19:40:00Z"
+    }
+  }
+}
+```
+
+- **Error format (standard):** Uses global standard error envelope.
+- **Status codes:** `201`, `400`, `401`, `403`, `409`, `500`.
+
+### `GET /admin/plans?from=YYYY-MM-DD&to=YYYY-MM-DD&page=1&pageSize=20`
+
+- **Purpose:** List reading plans in date range.
+- **Auth required?** Yes (admin).
+- **Request JSON:** None (query params only).
+- **Response JSON (success `200 OK`):**
+
+```json
+{
+  "ok": true,
+  "data": {
+    "from": "2026-01-01",
+    "to": "2026-01-31",
+    "items": [
+      {
+        "id": 436,
+        "date": "2026-01-01",
+        "book": "Matthew",
+        "chapter": 1,
+        "verses": "1-25",
+        "title": "Genealogy and birth",
+        "notes": null
+      }
+    ],
+    "pagination": {
+      "page": 1,
+      "pageSize": 20,
+      "totalItems": 31,
+      "totalPages": 2
+    }
+  }
+}
+```
+
+- **Error format (standard):** Uses global standard error envelope.
+- **Status codes:** `200`, `400`, `401`, `403`, `500`.
+
+### `PUT /admin/plans/:id`
+
+- **Purpose:** Update an existing reading plan.
+- **Auth required?** Yes (admin).
+- **Request JSON:**
+
+```json
+{
+  "date": "2026-01-20",
+  "book": "Matthew",
+  "chapter": 10,
+  "verses": "1-24",
+  "title": "Jesus sends the twelve (updated)",
+  "notes": "Expanded verse range"
+}
+```
+
+- **Response JSON (success `200 OK`):**
+
+```json
+{
+  "ok": true,
+  "data": {
+    "plan": {
+      "id": 500,
+      "date": "2026-01-20",
+      "book": "Matthew",
+      "chapter": 10,
+      "verses": "1-24",
+      "title": "Jesus sends the twelve (updated)",
+      "notes": "Expanded verse range",
+      "updatedAt": "2026-01-15T19:44:00Z"
+    }
+  }
+}
+```
+
+- **Error format (standard):** Uses global standard error envelope.
+- **Status codes:** `200`, `400`, `401`, `403`, `404`, `409`, `500`.
+
+### `DELETE /admin/plans/:id`
+
+- **Purpose:** Delete a reading plan by ID.
+- **Auth required?** Yes (admin).
+- **Request JSON:** None.
+- **Response JSON (success `200 OK`):**
+
+```json
+{
+  "ok": true,
+  "data": {
+    "deleted": true,
+    "id": 500
+  }
+}
+```
+
+- **Error format (standard):** Uses global standard error envelope.
+- **Status codes:** `200`, `401`, `403`, `404`, `500`.
+
+### `POST /admin/plans/bulk-import`
+
+- **Purpose:** Bulk create/update plans from payload (idempotent by `date`).
+- **Auth required?** Yes (admin).
+- **Request JSON:**
+
+```json
+{
+  "items": [
+    {
+      "date": "2026-02-01",
+      "book": "Matthew",
+      "chapter": 21,
+      "verses": "1-22",
+      "title": "Triumphal entry",
+      "notes": null
+    },
+    {
+      "date": "2026-02-02",
+      "book": "Matthew",
+      "chapter": 22,
+      "verses": "1-22",
+      "title": "Parables and questions",
+      "notes": null
+    }
+  ]
+}
+```
+
+- **Response JSON (success `200 OK`):**
+
+```json
+{
+  "ok": true,
+  "data": {
+    "created": 2,
+    "updated": 0,
+    "failed": 0,
+    "errors": []
+  }
+}
+```
+
+- **Error format (standard):** Uses global standard error envelope.
+- **Status codes:** `200`, `400`, `401`, `403`, `500`.
+
+### `POST /admin/announcements`
+
+- **Purpose:** Create an announcement.
+- **Auth required?** Yes (admin).
+- **Request JSON:**
+
+```json
+{
+  "title": "Friday youth service",
+  "message": "Join us at 19:00 in the main hall.",
+  "startsAt": "2026-01-15T00:00:00Z",
+  "endsAt": "2026-01-17T21:00:00Z"
+}
+```
+
+- **Response JSON (success `201 Created`):**
+
+```json
+{
+  "ok": true,
+  "data": {
+    "announcement": {
+      "id": 801,
+      "title": "Friday youth service",
+      "message": "Join us at 19:00 in the main hall.",
+      "startsAt": "2026-01-15T00:00:00Z",
+      "endsAt": "2026-01-17T21:00:00Z",
+      "createdAt": "2026-01-14T11:00:00Z"
+    }
+  }
+}
+```
+
+- **Error format (standard):** Uses global standard error envelope.
+- **Status codes:** `201`, `400`, `401`, `403`, `500`.
 
 ---
 
-## Notes
+## 3) Data Contracts
 
-- Endpoint list above defines the contract for MVP implementation.
-- Authorization and validation behavior should be consistent with the standard error format.
-- Versioning strategy: maintain compatibility within `/api/v1`; breaking changes go to `/api/v2`.
+### `UserProfile`
+
+```json
+{
+  "id": 101,
+  "name": "John Doe",
+  "email": "john@example.com",
+  "role": "user",
+  "createdAt": "2026-01-15T07:30:00Z"
+}
+```
+
+### `ReadingPlan`
+
+```json
+{
+  "id": 450,
+  "date": "2026-01-15",
+  "book": "Matthew",
+  "chapter": 5,
+  "verses": "1-16",
+  "title": "Sermon on the Mount (Part 1)",
+  "notes": null
+}
+```
+
+### `ReadingRecord`
+
+```json
+{
+  "id": 9001,
+  "userId": 101,
+  "planId": 450,
+  "date": "2026-01-15",
+  "completed": true,
+  "completedAt": "2026-01-15T19:14:22Z"
+}
+```
+
+### `SavedVerse`
+
+```json
+{
+  "id": 301,
+  "userId": 101,
+  "reference": "John 3:16",
+  "text": "For God so loved the world...",
+  "note": "Encouragement for today",
+  "createdAt": "2026-01-15T19:20:00Z"
+}
+```
+
+### `Announcement`
+
+```json
+{
+  "id": 801,
+  "title": "Friday youth service",
+  "message": "Join us at 19:00 in the main hall.",
+  "startsAt": "2026-01-15T00:00:00Z",
+  "endsAt": "2026-01-17T21:00:00Z",
+  "createdAt": "2026-01-14T11:00:00Z"
+}
+```
+
+### `AnalyticsToday`
+
+```json
+{
+  "date": "2026-01-15",
+  "timezone": "Europe/Riga",
+  "totalUsers": 220,
+  "activeToday": 151,
+  "missingToday": 69,
+  "inactive7d": 28,
+  "inactive14d": 14,
+  "completionRateToday": 68.64
+}
+```

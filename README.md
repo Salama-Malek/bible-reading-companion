@@ -23,4 +23,4 @@ Encourage daily Bible reading for church youth group using daily plans, reminder
 Follow tasks/01-backlog.md in order.
 
 ## Documentation
-- API specification (v1 draft): `docs/04-api-spec.md`
+- API specification (v1): `docs/04-api-spec.md` (single source of truth for backend/mobile/admin integration)
