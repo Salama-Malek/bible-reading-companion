@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Api\Auth\AuthService;
+use Api\Controllers\PlansController;
 use Api\Db\Query;
 use Api\Http\Request;
 use Api\Http\Response;
@@ -12,6 +13,7 @@ use Api\Middleware\AuthMiddleware;
 return static function (Router $router): void {
     $authService = new AuthService();
     $authMiddleware = new AuthMiddleware($authService);
+    $plansController = new PlansController();
 
     $router->get('/health', static function (Request $request): void {
         Response::success([
@@ -126,6 +128,15 @@ return static function (Router $router): void {
             'token' => $token,
             'user' => $user,
         ]);
+    });
+
+
+    $router->get('/plans/today', static function (Request $request) use ($plansController): void {
+        $plansController->today($request);
+    });
+
+    $router->get('/plans', static function (Request $request) use ($plansController): void {
+        $plansController->range($request);
     });
 
     $router->get('/auth/me', static function (Request $request) use ($authMiddleware): void {
