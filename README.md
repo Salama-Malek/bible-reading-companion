@@ -1,4 +1,4 @@
-﻿# Bible Reading Companion
+# Bible Reading Companion
 
 ## Goal
 Encourage daily Bible reading for church youth group using daily plans, reminders, confirmations, history, and admin analytics.
@@ -21,3 +21,6 @@ Encourage daily Bible reading for church youth group using daily plans, reminder
 
 ## Next
 Follow tasks/01-backlog.md in order.
+
+## Documentation
+- API specification (v1 draft): `docs/04-api-spec.md`
