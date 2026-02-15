@@ -1,0 +1,14 @@
+{
+  "expo": {
+    "name": "Bible Reading Companion",
+    "slug": "bible-reading-companion-mobile",
+    "scheme": "biblecompanion",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
