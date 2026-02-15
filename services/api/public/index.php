@@ -27,6 +27,8 @@ require_once $basePath . '/src/Middleware/RequireRole.php';
 require_once $basePath . '/src/Middleware/MiddlewareStack.php';
 require_once $basePath . '/src/Controllers/PlansController.php';
 require_once $basePath . '/src/Controllers/AdminPlansController.php';
+require_once $basePath . '/src/Reading/StreakCalculator.php';
+require_once $basePath . '/src/Controllers/ReadingController.php';
 
 Env::load($basePath);
 
