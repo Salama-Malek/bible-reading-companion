@@ -1,44 +1,12 @@
-[
-  {
-    "date": "2026-02-15",
-    "testament": "NT",
-    "book": "Matthew",
-    "chapter": 1
-  },
-  {
-    "date": "2026-02-16",
-    "testament": "NT",
-    "book": "Matthew",
-    "chapter": 2
-  },
-  {
-    "date": "2026-02-17",
-    "testament": "NT",
-    "book": "Matthew",
-    "chapter": 3
-  },
-  {
-    "date": "2026-02-18",
-    "testament": "NT",
-    "book": "Matthew",
-    "chapter": 4
-  },
-  {
-    "date": "2026-02-19",
-    "testament": "NT",
-    "book": "Matthew",
-    "chapter": 5
-  },
-  {
-    "date": "2026-02-20",
-    "testament": "NT",
-    "book": "Matthew",
-    "chapter": 6
-  },
-  {
-    "date": "2026-02-21",
-    "testament": "NT",
-    "book": "Matthew",
-    "chapter": 7
-  }
-]
+{
+  "startDate": "2026-02-17",
+  "entries": [
+    { "date": "2026-02-17", "testament": "new", "book": "Matthew", "chapter": 1 },
+    { "date": "2026-02-18", "testament": "new", "book": "Matthew", "chapter": 2 },
+    { "date": "2026-02-19", "testament": "new", "book": "Matthew", "chapter": 3 },
+    { "date": "2026-02-20", "testament": "new", "book": "Matthew", "chapter": 4 },
+    { "date": "2026-02-21", "testament": "new", "book": "Matthew", "chapter": 5 },
+    { "date": "2026-02-22", "testament": "new", "book": "Matthew", "chapter": 6 },
+    { "date": "2026-02-23", "testament": "new", "book": "Matthew", "chapter": 7 }
+  ]
+}
