@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Api\Auth\AuthService;
 use Api\Controllers\AdminPlansController;
+use Api\Controllers\DevicesController;
 use Api\Controllers\PlansController;
 use Api\Controllers\ReadingController;
 use Api\Controllers\VersesController;
@@ -21,6 +22,7 @@ return static function (Router $router): void {
     $adminPlansController = new AdminPlansController();
     $readingController = new ReadingController();
     $versesController = new VersesController();
+    $devicesController = new DevicesController();
     $requireAdmin = new RequireRole('admin');
 
     $router->get('/health', static function (Request $request): void {
@@ -213,6 +215,19 @@ return static function (Router $router): void {
     $router->delete('/verses/:id', static function (Request $request) use ($authMiddleware, $versesController): void {
         $authMiddleware($request, static function (Request $authedRequest) use ($versesController): void {
             $versesController->delete($authedRequest);
+        });
+    });
+
+
+    $router->post('/devices/register', static function (Request $request) use ($authMiddleware, $devicesController): void {
+        $authMiddleware($request, static function (Request $authedRequest) use ($devicesController): void {
+            $devicesController->register($authedRequest);
+        });
+    });
+
+    $router->post('/devices/unregister', static function (Request $request) use ($authMiddleware, $devicesController): void {
+        $authMiddleware($request, static function (Request $authedRequest) use ($devicesController): void {
+            $devicesController->unregister($authedRequest);
         });
     });
 

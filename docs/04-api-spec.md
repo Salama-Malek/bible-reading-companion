@@ -428,7 +428,7 @@ If no plan exists for today, `plan` is `null`.
 
 - If record is missing or owned by another user, API returns `NOT_FOUND`.
 - **Error format (standard):** Uses global standard error envelope.
-- **Status codes:** `200`, `400`, `401`, `404`, `500`.
+- **Status codes:** `200`, `400`, `401`, `500`.
 
 ## DEVICES (user)
 
@@ -441,10 +441,13 @@ If no plan exists for today, `plan` is `null`.
 ```json
 {
   "platform": "ios",
-  "pushToken": "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]",
-  "deviceId": "iphone14pro-abc123"
+  "pushToken": "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]"
 }
 ```
+
+- `platform` must be one of `android`, `ios`, `web`.
+- `pushToken` is required and max length is 255 characters.
+- Existing `pushToken` rows are reassigned to the current user and platform (upsert).
 
 - **Response JSON (success `200 OK`):**
 
@@ -452,21 +455,13 @@ If no plan exists for today, `plan` is `null`.
 {
   "ok": true,
   "data": {
-    "registered": true,
-    "device": {
-      "id": 71,
-      "userId": 101,
-      "platform": "ios",
-      "pushToken": "ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]",
-      "deviceId": "iphone14pro-abc123",
-      "updatedAt": "2026-01-15T19:30:00Z"
-    }
+    "registered": true
   }
 }
 ```
 
 - **Error format (standard):** Uses global standard error envelope.
-- **Status codes:** `200`, `400`, `401` (`INVALID_CREDENTIALS`), `500`.
+- **Status codes:** `200`, `400`, `401`, `500`.
 
 ### `POST /devices/unregister`
 
@@ -492,7 +487,7 @@ If no plan exists for today, `plan` is `null`.
 ```
 
 - **Error format (standard):** Uses global standard error envelope.
-- **Status codes:** `200`, `400`, `401`, `404`, `500`.
+- **Status codes:** `200`, `400`, `401`, `500`.
 
 ## ANNOUNCEMENTS (user)
 
