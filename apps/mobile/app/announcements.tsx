@@ -40,7 +40,16 @@ export default function AnnouncementsScreen() {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <View style={styles.headerRow}>
-        <Pressable onPress={() => router.back()}>
+        <Pressable
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+              return;
+            }
+
+            router.replace('/(tabs)/home');
+          }}
+        >
           <Text style={styles.refresh}>Back</Text>
         </Pressable>
         <Text style={styles.title}>Announcements</Text>

@@ -3,8 +3,19 @@ import { ApiError, ApiErrorPayload, ApiErrorResponse, ApiResponse } from './type
 const TOKEN_STORAGE_KEY = 'admin_auth_token';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-if (!API_BASE_URL) {
-  throw new Error('VITE_API_BASE_URL is not set.');
+function getApiBaseUrl(): string {
+  if (!API_BASE_URL) {
+    throw new ApiError(
+      {
+        code: 'CONFIG_ERROR',
+        message: 'VITE_API_BASE_URL is not set.',
+        details: null,
+      },
+      500,
+    );
+  }
+
+  return API_BASE_URL;
 }
 
 export function getAuthToken(): string | null {
@@ -20,7 +31,7 @@ export function clearAuthToken(): void {
 }
 
 function normalizeUrl(path: string): string {
-  const normalizedBase = API_BASE_URL.replace(/\/$/, '');
+  const normalizedBase = getApiBaseUrl().replace(/\/$/, '');
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   return `${normalizedBase}${normalizedPath}`;
 }
