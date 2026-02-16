@@ -1,14 +1,16 @@
-import { type CSSProperties, type FormEvent, useEffect, useMemo, useState } from 'react';
+import { type CSSProperties, type ChangeEvent, type FormEvent, useEffect, useMemo, useState } from 'react';
 import { BrowserRouter, Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 
 import {
   analyticsToday,
   createPlan,
   deletePlan,
+  bulkImportPlans,
   plans,
   type AdminAnalyticsToday,
   type AdminPlan,
   type AdminPlanTestament,
+  type BulkImportPlansResult,
   type AdminUser,
   type AdminUserStatus,
   updatePlan,
@@ -25,6 +27,27 @@ type PlanFormValues = {
   book: string;
   chapter: string;
 };
+
+type BulkImportJsonEntry = {
+  date: string;
+  testament: AdminPlanTestament;
+  book: string;
+  chapter: number;
+};
+
+const BULK_IMPORT_FAILURE_PREVIEW_COUNT = 8;
+
+const BULK_PLAN_TEMPLATE = JSON.stringify(
+  {
+    _comment: 'Bulk reading plan template. Set startDate and add one object per day in entries.',
+    _commentEntryShape:
+      'Each entry should look like: { "date": "YYYY-MM-DD", "testament": "old|new", "book": "Book Name", "chapter": 1 }',
+    startDate: 'YYYY-MM-DD',
+    entries: [],
+  },
+  null,
+  2,
+);
 
 const USER_STATUS_TABS: Array<{ value: AdminUserStatus; label: string }> = [
   { value: 'active', label: 'Active Today' },
@@ -420,6 +443,12 @@ function PlansPage({ user, onLogout }: { user: User | null; onLogout: () => void
   const [editError, setEditError] = useState<string | null>(null);
   const [editSubmitting, setEditSubmitting] = useState(false);
 
+  const [importText, setImportText] = useState('');
+  const [importError, setImportError] = useState<string | null>(null);
+  const [importSubmitting, setImportSubmitting] = useState(false);
+  const [importResult, setImportResult] = useState<BulkImportPlansResult | null>(null);
+  const [failurePreview, setFailurePreview] = useState<Array<{ date: string; reason: string }>>([]);
+
   const loadPlans = async (): Promise<void> => {
     if (!fromDate || !toDate) {
       setPlansError('From and To dates are required.');
@@ -537,6 +566,66 @@ function PlansPage({ user, onLogout }: { user: User | null; onLogout: () => void
     }
   };
 
+  const handleTemplateLoad = (): void => {
+    setImportText(BULK_PLAN_TEMPLATE);
+    setImportError(null);
+    setImportResult(null);
+    setFailurePreview([]);
+  };
+
+  const handleImportFileChange = async (event: ChangeEvent<HTMLInputElement>): Promise<void> => {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    try {
+      const fileText = await file.text();
+      setImportText(fileText);
+      setImportError(null);
+      setImportResult(null);
+      setFailurePreview([]);
+    } catch {
+      setImportError('Unable to read selected file. Please try again.');
+    } finally {
+      event.target.value = '';
+    }
+  };
+
+  const handleBulkImportSubmit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
+    event.preventDefault();
+
+    const parsed = parseAndValidateBulkImportText(importText);
+
+    if (!parsed.ok) {
+      setImportError(parsed.error);
+      setImportResult(null);
+      setFailurePreview([]);
+      return;
+    }
+
+    setImportSubmitting(true);
+    setImportError(null);
+
+    try {
+      const result = await bulkImportPlans(parsed.data.entries);
+      setImportResult(result);
+      setFailurePreview(buildFailurePreview(parsed.data.entries, result));
+      await loadPlans();
+    } catch (error) {
+      setImportResult(null);
+      setFailurePreview([]);
+      if (error instanceof ApiError) {
+        setImportError(error.message);
+      } else {
+        setImportError('Bulk import failed. Please try again.');
+      }
+    } finally {
+      setImportSubmitting(false);
+    }
+  };
+
   return (
     <main style={{ maxWidth: 1000, margin: '2rem auto', fontFamily: 'sans-serif', padding: '0 1rem' }}>
       <PageHeader user={user} onLogout={onLogout} title="Reading Plans" />
@@ -608,6 +697,59 @@ function PlansPage({ user, onLogout }: { user: User | null; onLogout: () => void
             </tbody>
           </table>
         </div>
+      </section>
+
+      <section style={panelStyle}>
+        <h2 style={{ marginTop: 0 }}>Bulk import plans</h2>
+        <form onSubmit={handleBulkImportSubmit} style={{ display: 'grid', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <button type="button" onClick={handleTemplateLoad}>
+              Load template
+            </button>
+            <label style={{ display: 'inline-flex', gap: '0.5rem', alignItems: 'center' }}>
+              Upload JSON
+              <input type="file" accept="application/json,.json" onChange={handleImportFileChange} />
+            </label>
+          </div>
+          <label>
+            Import JSON
+            <textarea
+              value={importText}
+              onChange={(event) => setImportText(event.target.value)}
+              placeholder='{"entries": [{"date":"2026-01-15","testament":"new","book":"Matthew","chapter":5}]}'
+              rows={14}
+              style={{ width: '100%', fontFamily: 'monospace' }}
+            />
+          </label>
+          <div>
+            <button type="submit" disabled={importSubmitting}>
+              {importSubmitting ? 'Importing…' : 'Import plans'}
+            </button>
+          </div>
+        </form>
+
+        {importError ? <p style={{ color: '#b00020' }}>{importError}</p> : null}
+
+        {importResult ? (
+          <div style={{ marginTop: '0.75rem' }}>
+            <p style={{ marginBottom: '0.5rem' }}>
+              Inserted: <strong>{importResult.insertedCount}</strong> · Updated: <strong>{importResult.updatedCount}</strong> · Failed:{' '}
+              <strong>{importResult.failedCount}</strong>
+            </p>
+            {failurePreview.length > 0 ? (
+              <>
+                <p style={{ marginBottom: '0.5rem' }}>First {failurePreview.length} failures:</p>
+                <ul style={{ marginTop: 0 }}>
+                  {failurePreview.map((failure, index) => (
+                    <li key={`${failure.date}-${index}`}>
+                      <strong>{failure.date}</strong>: {failure.reason}
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : null}
+          </div>
+        ) : null}
       </section>
 
       <section style={panelStyle}>
@@ -746,6 +888,10 @@ function parseAndValidatePlanValues(
     return { ok: false, error: 'Book is required.' };
   }
 
+  if (!['old', 'new'].includes(values.testament)) {
+    return { ok: false, error: 'Testament must be either old or new.' };
+  }
+
   if (!Number.isInteger(chapter) || chapter <= 0) {
     return { ok: false, error: 'Chapter must be a number greater than 0.' };
   }
@@ -759,6 +905,78 @@ function parseAndValidatePlanValues(
       chapter,
     },
   };
+}
+
+function parseAndValidateBulkImportText(
+  rawText: string,
+): { ok: true; data: { entries: BulkImportJsonEntry[] } } | { ok: false; error: string } {
+  if (!rawText.trim()) {
+    return { ok: false, error: 'Please paste JSON or upload a .json file.' };
+  }
+
+  let parsedValue: unknown;
+
+  try {
+    parsedValue = JSON.parse(rawText);
+  } catch {
+    return { ok: false, error: 'Invalid JSON. Please check syntax and try again.' };
+  }
+
+  if (!parsedValue || typeof parsedValue !== 'object' || Array.isArray(parsedValue)) {
+    return { ok: false, error: 'JSON root must be an object with an entries array.' };
+  }
+
+  const entries = (parsedValue as { entries?: unknown }).entries;
+
+  if (!Array.isArray(entries)) {
+    return { ok: false, error: 'entries must be an array.' };
+  }
+
+  const normalizedEntries: BulkImportJsonEntry[] = [];
+
+  for (let index = 0; index < entries.length; index += 1) {
+    const entry = entries[index];
+
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+      return { ok: false, error: `Entry #${index + 1} must be an object.` };
+    }
+
+    const rawDate = String((entry as { date?: unknown }).date ?? '');
+    const rawTestament = String((entry as { testament?: unknown }).testament ?? '');
+    const rawBook = String((entry as { book?: unknown }).book ?? '');
+    const rawChapter = (entry as { chapter?: unknown }).chapter;
+
+    const chapter = typeof rawChapter === 'number' ? rawChapter : Number(rawChapter);
+    const validated = parseAndValidatePlanValues({
+      date: rawDate,
+      testament: rawTestament as AdminPlanTestament,
+      book: rawBook,
+      chapter: String(chapter),
+    });
+
+    if (!validated.ok) {
+      return { ok: false, error: `Entry #${index + 1}: ${validated.error}` };
+    }
+
+    normalizedEntries.push(validated.data);
+  }
+
+  return { ok: true, data: { entries: normalizedEntries } };
+}
+
+function buildFailurePreview(
+  entries: BulkImportJsonEntry[],
+  result: BulkImportPlansResult,
+): Array<{ date: string; reason: string }> {
+  return result.failures.slice(0, BULK_IMPORT_FAILURE_PREVIEW_COUNT).map((failure) => {
+    const sourceEntry = entries[failure.index];
+    const reason = failure.issues.map((issue) => `${issue.field}: ${issue.issue}`).join('; ');
+
+    return {
+      date: sourceEntry?.date ?? `Entry #${failure.index + 1}`,
+      reason: reason || 'Unknown validation issue.',
+    };
+  });
 }
 
 function defaultPlanFormValues(): PlanFormValues {

@@ -37,6 +37,21 @@ export type UpsertAdminPlanInput = {
   chapter: number;
 };
 
+export type BulkImportFailure = {
+  index: number;
+  issues: Array<{
+    field: string;
+    issue: string;
+  }>;
+};
+
+export type BulkImportPlansResult = {
+  insertedCount: number;
+  updatedCount: number;
+  failedCount: number;
+  failures: BulkImportFailure[];
+};
+
 type AnalyticsTodayApiResponse = {
   completionRate?: {
     completed?: number;
@@ -114,5 +129,12 @@ export async function updatePlan(id: number, input: UpsertAdminPlanInput): Promi
 export async function deletePlan(id: number): Promise<void> {
   await apiFetch<null>(`/admin/plans/${id}`, {
     method: 'DELETE',
+  });
+}
+
+export async function bulkImportPlans(entries: UpsertAdminPlanInput[]): Promise<BulkImportPlansResult> {
+  return apiFetch<BulkImportPlansResult>('/admin/plans/bulk-import', {
+    method: 'POST',
+    body: JSON.stringify({ entries }),
   });
 }
