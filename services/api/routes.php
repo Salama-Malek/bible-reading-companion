@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Api\Auth\AuthService;
 use Api\Controllers\AdminPlansController;
 use Api\Controllers\AdminNotificationsController;
+use Api\Controllers\BibleController;
 use Api\Controllers\DevicesController;
 use Api\Controllers\AnnouncementsController;
 use Api\Controllers\PlansController;
@@ -27,6 +28,7 @@ return static function (Router $router): void {
     $versesController = new VersesController();
     $devicesController = new DevicesController();
     $announcementsController = new AnnouncementsController();
+    $bibleController = new BibleController();
     $requireAdmin = new RequireRole('admin');
 
     $router->get('/health', static function (Request $request): void {
@@ -218,6 +220,18 @@ return static function (Router $router): void {
                 'user' => $user,
             ]);
         });
+    });
+
+    $router->get('/bible/books', static function (Request $request) use ($bibleController): void {
+        $bibleController->books($request);
+    });
+
+    $router->get('/bible/:book/chapter/:chapter', static function (Request $request) use ($bibleController): void {
+        $bibleController->chapter($request);
+    });
+
+    $router->get('/bible/:book/:chapter/:verse', static function (Request $request) use ($bibleController): void {
+        $bibleController->verse($request);
     });
 
     $router->post('/verses', static function (Request $request) use ($authMiddleware, $versesController): void {

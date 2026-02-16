@@ -342,6 +342,92 @@ If no plan exists for today, `plan` is `null`.
 
 ## SAVED VERSES (user)
 
+## BIBLE (read-only)
+
+### `GET /bible/books`
+
+- **Purpose:** Return the Bible book catalog ordered by testament and sort order.
+- **Auth required?** No.
+- **Request JSON:** None.
+- **Response JSON (success `200 OK`):**
+
+```json
+{
+  "ok": true,
+  "data": {
+    "books": [
+      {
+        "id": 40,
+        "testament": "new",
+        "name": "Matthew",
+        "displayName": "Matthew",
+        "sortOrder": 1
+      }
+    ]
+  }
+}
+```
+
+- **Error format (standard):** Uses global standard error envelope.
+- **Status codes:** `200`, `500`.
+
+### `GET /bible/:book/chapter/:chapter`
+
+- **Purpose:** Return all verses for one chapter in a given Bible book.
+- **Auth required?** No.
+- **Path params:**
+  - `book`: Canonical book name (URL-encoded when needed), e.g. `Matthew`.
+  - `chapter`: Positive integer chapter number.
+- **Request JSON:** None.
+- **Response JSON (success `200 OK`):**
+
+```json
+{
+  "ok": true,
+  "data": {
+    "book": "Matthew",
+    "chapter": 1,
+    "verses": [
+      {
+        "verse": 1,
+        "text": "The book of the generation of Jesus Christ, the son of David, the son of Abraham."
+      }
+    ]
+  }
+}
+```
+
+- If chapter has no rows, response remains `ok: true` and `verses: []`.
+- If `book` does not exist, API returns `BOOK_NOT_FOUND`.
+- **Error format (standard):** Uses global standard error envelope.
+- **Status codes:** `200`, `400`, `404`, `500`.
+
+### `GET /bible/:book/:chapter/:verse`
+
+- **Purpose:** Return one verse text for a specific book/chapter/verse reference.
+- **Auth required?** No.
+- **Path params:**
+  - `book`: Canonical book name (URL-encoded when needed).
+  - `chapter`: Positive integer chapter number.
+  - `verse`: Positive integer verse number.
+- **Request JSON:** None.
+- **Response JSON (success `200 OK`):**
+
+```json
+{
+  "ok": true,
+  "data": {
+    "reference": "Matthew 1:1",
+    "text": "The book of the generation of Jesus Christ, the son of David, the son of Abraham."
+  }
+}
+```
+
+- If `book` does not exist, API returns `BOOK_NOT_FOUND`.
+- If verse does not exist, API returns `VERSE_NOT_FOUND`.
+- **Error format (standard):** Uses global standard error envelope.
+- **Status codes:** `200`, `400`, `404`, `500`.
+
 ### `POST /verses`
 
 - **Purpose:** Save a verse reference/note for current user.
