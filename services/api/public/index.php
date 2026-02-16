@@ -29,6 +29,11 @@ require_once $basePath . '/src/Controllers/PlansController.php';
 require_once $basePath . '/src/Controllers/AdminPlansController.php';
 require_once $basePath . '/src/Reading/StreakCalculator.php';
 require_once $basePath . '/src/Controllers/ReadingController.php';
+require_once $basePath . '/src/Controllers/VersesController.php';
+require_once $basePath . '/src/Controllers/DevicesController.php';
+require_once $basePath . '/src/Controllers/AdminNotificationsController.php';
+require_once $basePath . '/src/Notifications/NotificationProvider.php';
+require_once $basePath . '/src/Notifications/LogNotificationProvider.php';
 
 Env::load($basePath);
 

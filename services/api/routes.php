@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Api\Auth\AuthService;
 use Api\Controllers\AdminPlansController;
+use Api\Controllers\AdminNotificationsController;
 use Api\Controllers\DevicesController;
 use Api\Controllers\PlansController;
 use Api\Controllers\ReadingController;
@@ -20,6 +21,7 @@ return static function (Router $router): void {
     $authMiddleware = new AuthMiddleware($authService);
     $plansController = new PlansController();
     $adminPlansController = new AdminPlansController();
+    $adminNotificationsController = new AdminNotificationsController();
     $readingController = new ReadingController();
     $versesController = new VersesController();
     $devicesController = new DevicesController();
@@ -188,6 +190,10 @@ return static function (Router $router): void {
                 $adminPlansController->bulkImport($adminRequest);
             });
         });
+    });
+
+    $router->post('/admin/notifications/send-today', static function (Request $request) use ($adminNotificationsController): void {
+        $adminNotificationsController->sendToday($request);
     });
 
     $router->get('/auth/me', static function (Request $request) use ($authMiddleware): void {
