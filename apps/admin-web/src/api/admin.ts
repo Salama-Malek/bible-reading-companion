@@ -20,6 +20,23 @@ export type AdminUser = {
   currentStreak?: number | null;
 };
 
+export type AdminPlanTestament = 'old' | 'new';
+
+export type AdminPlan = {
+  id: number;
+  date: string;
+  testament: AdminPlanTestament;
+  book: string;
+  chapter: number;
+};
+
+export type UpsertAdminPlanInput = {
+  date: string;
+  testament: AdminPlanTestament;
+  book: string;
+  chapter: number;
+};
+
 type AnalyticsTodayApiResponse = {
   completionRate?: {
     completed?: number;
@@ -69,5 +86,33 @@ export async function analyticsToday(): Promise<AdminAnalyticsToday> {
 export async function usersByStatus(status: AdminUserStatus): Promise<AdminUser[]> {
   return apiFetch<AdminUser[]>(`/admin/users?status=${encodeURIComponent(status)}`, {
     method: 'GET',
+  });
+}
+
+export async function plans(from: string, to: string): Promise<AdminPlan[]> {
+  const query = new URLSearchParams({ from, to });
+
+  return apiFetch<AdminPlan[]>(`/admin/plans?${query.toString()}`, {
+    method: 'GET',
+  });
+}
+
+export async function createPlan(input: UpsertAdminPlanInput): Promise<AdminPlan> {
+  return apiFetch<AdminPlan>('/admin/plans', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
+
+export async function updatePlan(id: number, input: UpsertAdminPlanInput): Promise<AdminPlan> {
+  return apiFetch<AdminPlan>(`/admin/plans/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(input),
+  });
+}
+
+export async function deletePlan(id: number): Promise<void> {
+  await apiFetch<null>(`/admin/plans/${id}`, {
+    method: 'DELETE',
   });
 }
