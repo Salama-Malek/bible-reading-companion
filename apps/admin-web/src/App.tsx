@@ -1,11 +1,30 @@
 import { type CSSProperties, type FormEvent, useEffect, useMemo, useState } from 'react';
-import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Link, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 
-import { analyticsToday, type AdminAnalyticsToday, type AdminUser, type AdminUserStatus, usersByStatus } from './api/admin';
+import {
+  analyticsToday,
+  createPlan,
+  deletePlan,
+  plans,
+  type AdminAnalyticsToday,
+  type AdminPlan,
+  type AdminPlanTestament,
+  type AdminUser,
+  type AdminUserStatus,
+  updatePlan,
+  usersByStatus,
+} from './api/admin';
 import { login, logout, me } from './api/auth';
 import { ApiError, User } from './api/types';
 
 type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
+
+type PlanFormValues = {
+  date: string;
+  testament: AdminPlanTestament;
+  book: string;
+  chapter: string;
+};
 
 const USER_STATUS_TABS: Array<{ value: AdminUserStatus; label: string }> = [
   { value: 'active', label: 'Active Today' },
@@ -72,6 +91,14 @@ function AppRoutes(): JSX.Element {
         element={
           <ProtectedRoute authStatus={authStatus}>
             <DashboardPage user={currentUser} onLogout={handleLogout} />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/plans"
+        element={
+          <ProtectedRoute authStatus={authStatus}>
+            <PlansPage user={currentUser} onLogout={handleLogout} />
           </ProtectedRoute>
         }
       />
@@ -270,15 +297,7 @@ function DashboardPage({ user, onLogout }: { user: User | null; onLogout: () => 
 
   return (
     <main style={{ maxWidth: 1000, margin: '2rem auto', fontFamily: 'sans-serif', padding: '0 1rem' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <h1 style={{ marginBottom: '0.35rem' }}>Admin Dashboard</h1>
-          <p style={{ marginTop: 0 }}>Welcome {user?.name ?? 'admin'}.</p>
-        </div>
-        <button type="button" onClick={onLogout}>
-          Logout
-        </button>
-      </header>
+      <PageHeader user={user} onLogout={onLogout} title="Admin Dashboard" />
 
       <section
         style={{
@@ -385,6 +404,376 @@ function DashboardPage({ user, onLogout }: { user: User | null; onLogout: () => 
   );
 }
 
+function PlansPage({ user, onLogout }: { user: User | null; onLogout: () => void }): JSX.Element {
+  const [fromDate, setFromDate] = useState(getTodayDateInputValue());
+  const [toDate, setToDate] = useState(getTodayDateInputValue());
+  const [plansList, setPlansList] = useState<AdminPlan[]>([]);
+  const [loadingPlans, setLoadingPlans] = useState(false);
+  const [plansError, setPlansError] = useState<string | null>(null);
+
+  const [createValues, setCreateValues] = useState<PlanFormValues>(defaultPlanFormValues());
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [createSubmitting, setCreateSubmitting] = useState(false);
+
+  const [editingPlan, setEditingPlan] = useState<AdminPlan | null>(null);
+  const [editValues, setEditValues] = useState<PlanFormValues>(defaultPlanFormValues());
+  const [editError, setEditError] = useState<string | null>(null);
+  const [editSubmitting, setEditSubmitting] = useState(false);
+
+  const loadPlans = async (): Promise<void> => {
+    if (!fromDate || !toDate) {
+      setPlansError('From and To dates are required.');
+      return;
+    }
+
+    setLoadingPlans(true);
+    setPlansError(null);
+
+    try {
+      const data = await plans(fromDate, toDate);
+      setPlansList(data);
+    } catch (error) {
+      if (error instanceof ApiError) {
+        setPlansError(error.message);
+      } else {
+        setPlansError('Failed to load plans.');
+      }
+    } finally {
+      setLoadingPlans(false);
+    }
+  };
+
+  useEffect(() => {
+    loadPlans();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleCreateSubmit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
+    event.preventDefault();
+    const parsed = parseAndValidatePlanValues(createValues);
+
+    if (!parsed.ok) {
+      setCreateError(parsed.error);
+      return;
+    }
+
+    setCreateSubmitting(true);
+    setCreateError(null);
+
+    try {
+      await createPlan(parsed.data);
+      setCreateValues(defaultPlanFormValues());
+      await loadPlans();
+    } catch (error) {
+      if (error instanceof ApiError) {
+        setCreateError(error.message);
+      } else {
+        setCreateError('Failed to create plan.');
+      }
+    } finally {
+      setCreateSubmitting(false);
+    }
+  };
+
+  const beginEdit = (plan: AdminPlan): void => {
+    setEditingPlan(plan);
+    setEditValues({
+      date: plan.date,
+      testament: plan.testament,
+      book: plan.book,
+      chapter: String(plan.chapter),
+    });
+    setEditError(null);
+  };
+
+  const handleEditSubmit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
+    event.preventDefault();
+
+    if (!editingPlan) {
+      return;
+    }
+
+    const parsed = parseAndValidatePlanValues(editValues);
+
+    if (!parsed.ok) {
+      setEditError(parsed.error);
+      return;
+    }
+
+    setEditSubmitting(true);
+    setEditError(null);
+
+    try {
+      await updatePlan(editingPlan.id, parsed.data);
+      setEditingPlan(null);
+      await loadPlans();
+    } catch (error) {
+      if (error instanceof ApiError) {
+        setEditError(error.message);
+      } else {
+        setEditError('Failed to update plan.');
+      }
+    } finally {
+      setEditSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (plan: AdminPlan): Promise<void> => {
+    const confirmed = window.confirm(`Delete plan for ${plan.book} ${plan.chapter} on ${plan.date}?`);
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await deletePlan(plan.id);
+      await loadPlans();
+    } catch (error) {
+      if (error instanceof ApiError) {
+        setPlansError(error.message);
+      } else {
+        setPlansError('Failed to delete plan.');
+      }
+    }
+  };
+
+  return (
+    <main style={{ maxWidth: 1000, margin: '2rem auto', fontFamily: 'sans-serif', padding: '0 1rem' }}>
+      <PageHeader user={user} onLogout={onLogout} title="Reading Plans" />
+
+      <section style={panelStyle}>
+        <h2 style={{ marginTop: 0 }}>Filter plans</h2>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            loadPlans();
+          }}
+          style={{ display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}
+        >
+          <label>
+            From
+            <input required type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} style={{ width: '100%' }} />
+          </label>
+          <label>
+            To
+            <input required type="date" value={toDate} onChange={(event) => setToDate(event.target.value)} style={{ width: '100%' }} />
+          </label>
+          <div style={{ display: 'flex', alignItems: 'end' }}>
+            <button type="submit" disabled={loadingPlans}>
+              {loadingPlans ? 'Loading…' : 'Apply filter'}
+            </button>
+          </div>
+        </form>
+
+        {plansError ? <p style={{ color: '#b00020' }}>{plansError}</p> : null}
+
+        <div style={{ overflowX: 'auto', border: '1px solid #e0e0e0', borderRadius: 8, marginTop: '0.75rem' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ backgroundColor: '#f5f5f5' }}>
+                <th style={tableHeaderStyle}>Date</th>
+                <th style={tableHeaderStyle}>Testament</th>
+                <th style={tableHeaderStyle}>Book</th>
+                <th style={tableHeaderStyle}>Chapter</th>
+                <th style={tableHeaderStyle}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {plansList.length === 0 ? (
+                <tr>
+                  <td style={emptyCellStyle} colSpan={5}>
+                    No plans found in this range.
+                  </td>
+                </tr>
+              ) : (
+                plansList.map((plan) => (
+                  <tr key={plan.id}>
+                    <td style={tableCellStyle}>{plan.date}</td>
+                    <td style={tableCellStyle}>{plan.testament}</td>
+                    <td style={tableCellStyle}>{plan.book}</td>
+                    <td style={tableCellStyle}>{plan.chapter}</td>
+                    <td style={tableCellStyle}>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button type="button" onClick={() => beginEdit(plan)}>
+                          Edit
+                        </button>
+                        <button type="button" onClick={() => handleDelete(plan)}>
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section style={panelStyle}>
+        <h2 style={{ marginTop: 0 }}>Create plan</h2>
+        <PlanForm
+          values={createValues}
+          submitLabel={createSubmitting ? 'Creating…' : 'Create'}
+          disabled={createSubmitting}
+          onChange={setCreateValues}
+          onSubmit={handleCreateSubmit}
+        />
+        {createError ? <p style={{ color: '#b00020' }}>{createError}</p> : null}
+      </section>
+
+      {editingPlan ? (
+        <section style={panelStyle}>
+          <h2 style={{ marginTop: 0 }}>Edit plan #{editingPlan.id}</h2>
+          <PlanForm
+            values={editValues}
+            submitLabel={editSubmitting ? 'Saving…' : 'Save changes'}
+            disabled={editSubmitting}
+            onChange={setEditValues}
+            onSubmit={handleEditSubmit}
+          />
+          <div style={{ marginTop: '0.75rem' }}>
+            <button type="button" onClick={() => setEditingPlan(null)}>
+              Cancel
+            </button>
+          </div>
+          {editError ? <p style={{ color: '#b00020' }}>{editError}</p> : null}
+        </section>
+      ) : null}
+    </main>
+  );
+}
+
+function PlanForm({
+  values,
+  onChange,
+  onSubmit,
+  submitLabel,
+  disabled,
+}: {
+  values: PlanFormValues;
+  onChange: (next: PlanFormValues) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => Promise<void>;
+  submitLabel: string;
+  disabled: boolean;
+}): JSX.Element {
+  return (
+    <form
+      onSubmit={onSubmit}
+      style={{ display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}
+    >
+      <label>
+        Date
+        <input
+          required
+          type="date"
+          value={values.date}
+          onChange={(event) => onChange({ ...values, date: event.target.value })}
+          style={{ width: '100%' }}
+        />
+      </label>
+      <label>
+        Testament
+        <select
+          required
+          value={values.testament}
+          onChange={(event) => onChange({ ...values, testament: event.target.value as AdminPlanTestament })}
+          style={{ width: '100%' }}
+        >
+          <option value="old">Old</option>
+          <option value="new">New</option>
+        </select>
+      </label>
+      <label>
+        Book
+        <input
+          required
+          type="text"
+          value={values.book}
+          onChange={(event) => onChange({ ...values, book: event.target.value })}
+          style={{ width: '100%' }}
+        />
+      </label>
+      <label>
+        Chapter
+        <input
+          required
+          min={1}
+          type="number"
+          value={values.chapter}
+          onChange={(event) => onChange({ ...values, chapter: event.target.value })}
+          style={{ width: '100%' }}
+        />
+      </label>
+      <div style={{ display: 'flex', alignItems: 'end' }}>
+        <button type="submit" disabled={disabled}>
+          {submitLabel}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function PageHeader({ user, onLogout, title }: { user: User | null; onLogout: () => void; title: string }): JSX.Element {
+  return (
+    <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
+      <div>
+        <h1 style={{ marginBottom: '0.35rem' }}>{title}</h1>
+        <p style={{ marginTop: 0 }}>Welcome {user?.name ?? 'admin'}.</p>
+      </div>
+      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+        <Link to="/">Dashboard</Link>
+        <Link to="/plans">Plans</Link>
+        <button type="button" onClick={onLogout}>
+          Logout
+        </button>
+      </div>
+    </header>
+  );
+}
+
+function parseAndValidatePlanValues(
+  values: PlanFormValues,
+): { ok: true; data: { date: string; testament: AdminPlanTestament; book: string; chapter: number } } | { ok: false; error: string } {
+  const trimmedBook = values.book.trim();
+  const chapter = Number(values.chapter);
+
+  if (!values.date) {
+    return { ok: false, error: 'Date is required.' };
+  }
+
+  if (!trimmedBook) {
+    return { ok: false, error: 'Book is required.' };
+  }
+
+  if (!Number.isInteger(chapter) || chapter <= 0) {
+    return { ok: false, error: 'Chapter must be a number greater than 0.' };
+  }
+
+  return {
+    ok: true,
+    data: {
+      date: values.date,
+      testament: values.testament,
+      book: trimmedBook,
+      chapter,
+    },
+  };
+}
+
+function defaultPlanFormValues(): PlanFormValues {
+  return {
+    date: getTodayDateInputValue(),
+    testament: 'old',
+    book: '',
+    chapter: '1',
+  };
+}
+
+function getTodayDateInputValue(): string {
+  return new Date().toISOString().split('T')[0] ?? '';
+}
+
 function formatDate(value: string | null | undefined): string {
   if (!value) {
     return '—';
@@ -398,6 +787,14 @@ function formatDate(value: string | null | undefined): string {
 
   return parsed.toLocaleString();
 }
+
+const panelStyle: CSSProperties = {
+  border: '1px solid #d8d8d8',
+  borderRadius: 8,
+  padding: '1rem',
+  marginTop: '1rem',
+  backgroundColor: '#fafafa',
+};
 
 const tableHeaderStyle: CSSProperties = {
   textAlign: 'left',
