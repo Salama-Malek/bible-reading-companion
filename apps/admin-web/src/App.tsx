@@ -197,7 +197,8 @@ function LoginPage({
   };
 
   return (
-    <main style={{ maxWidth: 420, margin: '3rem auto', fontFamily: 'sans-serif' }}>
+    <main className="login-main">
+      <section className="login-card">
       <h1>Admin Login</h1>
       <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '0.75rem' }}>
         <label>
@@ -226,7 +227,8 @@ function LoginPage({
           {isSubmitting ? 'Logging in…' : 'Login'}
         </button>
       </form>
-      {errorMessage ? <p style={{ color: '#b00020' }}>{errorMessage}</p> : null}
+      {errorMessage ? <p className="error-text">{errorMessage}</p> : null}
+      </section>
     </main>
   );
 }
@@ -241,7 +243,7 @@ function ProtectedRoute({
   const location = useLocation();
 
   if (authStatus === 'loading') {
-    return <p style={{ fontFamily: 'sans-serif', padding: '2rem' }}>Loading…</p>;
+    return <p style={{ padding: '2rem' }}>Loading…</p>;
   }
 
   if (authStatus === 'unauthenticated') {
@@ -329,7 +331,7 @@ function DashboardPage({ user, onLogout }: { user: User | null; onLogout: () => 
   ];
 
   return (
-    <main style={{ maxWidth: 1000, margin: '2rem auto', fontFamily: 'sans-serif', padding: '0 1rem' }}>
+    <main>
       <PageHeader user={user} onLogout={onLogout} title="Admin Dashboard" />
 
       <section
@@ -344,7 +346,7 @@ function DashboardPage({ user, onLogout }: { user: User | null; onLogout: () => 
         <h2 style={{ marginTop: 0 }}>Today completion rate</h2>
 
         {analyticsLoading ? <p>Loading analytics…</p> : null}
-        {analyticsError ? <p style={{ color: '#b00020' }}>{analyticsError}</p> : null}
+        {analyticsError ? <p className="error-text">{analyticsError}</p> : null}
 
         {!analyticsLoading && !analyticsError ? (
           <>
@@ -396,13 +398,13 @@ function DashboardPage({ user, onLogout }: { user: User | null; onLogout: () => 
         </div>
 
         {usersLoading ? <p>Loading users…</p> : null}
-        {usersError ? <p style={{ color: '#b00020' }}>{usersError}</p> : null}
+        {usersError ? <p className="error-text">{usersError}</p> : null}
 
         {!usersLoading && !usersError ? (
-          <div style={{ overflowX: 'auto', border: '1px solid #e0e0e0', borderRadius: 8 }}>
+          <div style={{ overflowX: 'auto', border: '1px solid #d8e1ef', borderRadius: 12, backgroundColor: '#fff' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ backgroundColor: '#f5f5f5' }}>
+                <tr style={{ backgroundColor: '#eff4ff' }}>
                   <th style={tableHeaderStyle}>Name</th>
                   <th style={tableHeaderStyle}>Email</th>
                   <th style={tableHeaderStyle}>Role</th>
@@ -637,7 +639,7 @@ function PlansPage({ user, onLogout }: { user: User | null; onLogout: () => void
   };
 
   return (
-    <main style={{ maxWidth: 1000, margin: '2rem auto', fontFamily: 'sans-serif', padding: '0 1rem' }}>
+    <main>
       <PageHeader user={user} onLogout={onLogout} title="Reading Plans" />
 
       <section style={panelStyle}>
@@ -664,12 +666,12 @@ function PlansPage({ user, onLogout }: { user: User | null; onLogout: () => void
           </div>
         </form>
 
-        {plansError ? <p style={{ color: '#b00020' }}>{plansError}</p> : null}
+        {plansError ? <p className="error-text">{plansError}</p> : null}
 
-        <div style={{ overflowX: 'auto', border: '1px solid #e0e0e0', borderRadius: 8, marginTop: '0.75rem' }}>
+        <div style={{ overflowX: 'auto', border: '1px solid #d8e1ef', borderRadius: 12, marginTop: '0.75rem', backgroundColor: '#fff' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ backgroundColor: '#f5f5f5' }}>
+              <tr style={{ backgroundColor: '#eff4ff' }}>
                 <th style={tableHeaderStyle}>Date</th>
                 <th style={tableHeaderStyle}>Testament</th>
                 <th style={tableHeaderStyle}>Book</th>
@@ -738,7 +740,7 @@ function PlansPage({ user, onLogout }: { user: User | null; onLogout: () => void
           </div>
         </form>
 
-        {importError ? <p style={{ color: '#b00020' }}>{importError}</p> : null}
+        {importError ? <p className="error-text">{importError}</p> : null}
 
         {importResult ? (
           <div style={{ marginTop: '0.75rem' }}>
@@ -771,7 +773,7 @@ function PlansPage({ user, onLogout }: { user: User | null; onLogout: () => void
           onChange={setCreateValues}
           onSubmit={handleCreateSubmit}
         />
-        {createError ? <p style={{ color: '#b00020' }}>{createError}</p> : null}
+        {createError ? <p className="error-text">{createError}</p> : null}
       </section>
 
       {editingPlan ? (
@@ -789,7 +791,7 @@ function PlansPage({ user, onLogout }: { user: User | null; onLogout: () => void
               Cancel
             </button>
           </div>
-          {editError ? <p style={{ color: '#b00020' }}>{editError}</p> : null}
+          {editError ? <p className="error-text">{editError}</p> : null}
         </section>
       ) : null}
     </main>
@@ -869,7 +871,7 @@ function AnnouncementsPage({ user, onLogout }: { user: User | null; onLogout: ()
   };
 
   return (
-    <main style={{ maxWidth: 900, margin: '2rem auto', fontFamily: 'sans-serif', padding: '0 1rem' }}>
+    <main>
       <PageHeader user={user} onLogout={onLogout} title="Announcements" />
 
       <section style={panelStyle}>
@@ -902,7 +904,7 @@ function AnnouncementsPage({ user, onLogout }: { user: User | null; onLogout: ()
             </button>
           </div>
         </form>
-        {submitError ? <p style={{ color: '#b00020' }}>{submitError}</p> : null}
+        {submitError ? <p className="error-text">{submitError}</p> : null}
       </section>
 
       <section style={panelStyle}>
@@ -914,7 +916,7 @@ function AnnouncementsPage({ user, onLogout }: { user: User | null; onLogout: ()
         </div>
 
         {loading ? <p>Loading announcements…</p> : null}
-        {error ? <p style={{ color: '#b00020' }}>{error}</p> : null}
+        {error ? <p className="error-text">{error}</p> : null}
 
         {!loading && !error ? (
           items.length > 0 ? (
@@ -922,7 +924,7 @@ function AnnouncementsPage({ user, onLogout }: { user: User | null; onLogout: ()
               {items.map((item) => (
                 <article key={item.id} style={{ border: '1px solid #e0e0e0', borderRadius: 8, padding: '0.75rem' }}>
                   <h3 style={{ margin: '0 0 0.35rem' }}>{item.title}</h3>
-                  <small style={{ color: '#666' }}>{formatDate(item.created_at)}</small>
+                  <small className="info-badge">{formatDate(item.created_at)}</small>
                   <p style={{ marginBottom: 0, whiteSpace: 'pre-wrap' }}>{item.body}</p>
                 </article>
               ))}
@@ -1008,12 +1010,12 @@ function PlanForm({
 
 function PageHeader({ user, onLogout, title }: { user: User | null; onLogout: () => void; title: string }): JSX.Element {
   return (
-    <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
+    <header className="page-header">
       <div>
         <h1 style={{ marginBottom: '0.35rem' }}>{title}</h1>
         <p style={{ marginTop: 0 }}>Welcome {user?.name ?? 'admin'}.</p>
       </div>
-      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+      <div className="page-header-nav">
         <Link to="/">Dashboard</Link>
         <Link to="/plans">Plans</Link>
         <Link to="/announcements">Announcements</Link>
@@ -1158,23 +1160,27 @@ function formatDate(value: string | null | undefined): string {
 }
 
 const panelStyle: CSSProperties = {
-  border: '1px solid #d8d8d8',
-  borderRadius: 8,
-  padding: '1rem',
+  border: '1px solid #d8e1ef',
+  borderRadius: 14,
+  padding: '1.1rem',
   marginTop: '1rem',
-  backgroundColor: '#fafafa',
+  background: 'linear-gradient(180deg, #ffffff 0%, #f9fbff 100%)',
+  boxShadow: '0 10px 30px rgba(15, 23, 42, 0.08)',
 };
 
 const tableHeaderStyle: CSSProperties = {
   textAlign: 'left',
   padding: '0.75rem',
-  borderBottom: '1px solid #e0e0e0',
-  fontSize: '0.9rem',
+  borderBottom: '1px solid #d8e1ef',
+  fontSize: '0.78rem',
+  textTransform: 'uppercase',
+  letterSpacing: '0.03em',
+  color: '#1e3a8a',
 };
 
 const tableCellStyle: CSSProperties = {
   padding: '0.75rem',
-  borderBottom: '1px solid #efefef',
+  borderBottom: '1px solid #ecf0f7',
   fontSize: '0.9rem',
 };
 
