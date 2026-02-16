@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import { router } from 'expo-router';
 
 import { completeReadingForDate, getLocalDateString, getTodayCompletionState } from '@/src/api/reading';
 import { getTodayPlan } from '@/src/api/plans';
@@ -34,6 +35,23 @@ export default function HomeScreen() {
   }, [loadHomeData]);
 
   const canMarkAsRead = Boolean(plan && method && !isCompleted && !isSubmitting);
+
+  const handleReadInsideApp = useCallback(() => {
+    setMethod('digital');
+
+    if (!plan) {
+      return;
+    }
+
+    router.push({
+      pathname: '/reader',
+      params: {
+        date: plan.date,
+        book: plan.book,
+        chapter: String(plan.chapter),
+      },
+    });
+  }, [plan]);
 
   const handleMarkAsRead = useCallback(async () => {
     if (!plan || !method || isCompleted || isSubmitting) {
@@ -100,7 +118,7 @@ export default function HomeScreen() {
 
         <Pressable
           style={[styles.methodButton, method === 'digital' ? styles.methodButtonSelected : null]}
-          onPress={() => setMethod('digital')}
+          onPress={handleReadInsideApp}
         >
           <Text style={styles.methodButtonText}>Read inside the app</Text>
         </Pressable>
