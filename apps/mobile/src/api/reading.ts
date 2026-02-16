@@ -1,3 +1,5 @@
+import { getTodayAsEuropeRigaYYYYMMDD } from '@/src/utils/europeRigaDate';
+
 import { apiFetch } from './client';
 
 export type ReadingMethod = 'physical' | 'digital';
@@ -11,17 +13,36 @@ type ReadingRecord = {
   date?: string;
 };
 
+type ReadingPlan = {
+  id: number;
+  date: string;
+  testament: string;
+  book: string;
+  chapter: number;
+  created_at: string;
+};
+
+export type ReadingHistorySummary = {
+  completedCount: number;
+  missedCount: number;
+  currentStreak: number;
+  longestStreak: number;
+};
+
+export type ReadingHistoryResponse = {
+  plans: ReadingPlan[];
+  records: ReadingRecord[];
+  missedDates: string[];
+  summary: ReadingHistorySummary;
+};
+
 type CompletionInput = {
   date: string;
   method: ReadingMethod;
 };
 
 export function getLocalDateString(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const day = String(now.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  return getTodayAsEuropeRigaYYYYMMDD();
 }
 
 export async function completeReadingForDate(input: CompletionInput): Promise<ReadingRecord> {
@@ -39,4 +60,12 @@ export async function getTodayCompletionState(today: string = getLocalDateString
   });
 
   return data.records.length > 0;
+}
+
+export async function getReadingHistory(from: string, to: string): Promise<ReadingHistoryResponse> {
+  const query = new URLSearchParams({ from, to });
+
+  return apiFetch<ReadingHistoryResponse>(`/reading/history?${query.toString()}`, {
+    method: 'GET',
+  });
 }
