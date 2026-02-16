@@ -76,7 +76,7 @@ export default function ReaderScreen() {
       Alert.alert('Verse saved', 'Your verse has been saved.', [
         {
           text: 'View saved verses',
-          onPress: () => router.push('/(tabs)/history'),
+          onPress: () => router.push('/(tabs)/saved'),
         },
         { text: 'OK', style: 'cancel' },
       ]);
