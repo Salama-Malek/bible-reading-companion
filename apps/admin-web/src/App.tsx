@@ -3,7 +3,9 @@ import { BrowserRouter, Link, Navigate, Route, Routes, useLocation, useNavigate 
 
 import {
   analyticsToday,
+  createAnnouncement,
   createPlan,
+  listAnnouncements,
   deletePlan,
   bulkImportPlans,
   plans,
@@ -122,6 +124,14 @@ function AppRoutes(): JSX.Element {
         element={
           <ProtectedRoute authStatus={authStatus}>
             <PlansPage user={currentUser} onLogout={handleLogout} />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/announcements"
+        element={
+          <ProtectedRoute authStatus={authStatus}>
+            <AnnouncementsPage user={currentUser} onLogout={handleLogout} />
           </ProtectedRoute>
         }
       />
@@ -786,6 +796,146 @@ function PlansPage({ user, onLogout }: { user: User | null; onLogout: () => void
   );
 }
 
+
+function AnnouncementsPage({ user, onLogout }: { user: User | null; onLogout: () => void }): JSX.Element {
+  const [items, setItems] = useState<Array<{ id: number; title: string; body: string; created_at: string }>>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const loadAnnouncements = async (): Promise<void> => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const data = await listAnnouncements();
+      setItems(data);
+    } catch (loadError) {
+      if (loadError instanceof ApiError) {
+        setError(loadError.message);
+      } else {
+        setError('Failed to load announcements.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadAnnouncements();
+  }, []);
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
+    event.preventDefault();
+
+    const trimmedTitle = title.trim();
+    const trimmedBody = body.trim();
+
+    if (!trimmedTitle) {
+      setSubmitError('Title is required.');
+      return;
+    }
+
+    if (trimmedTitle.length > 140) {
+      setSubmitError('Title must be 140 characters or fewer.');
+      return;
+    }
+
+    if (!trimmedBody) {
+      setSubmitError('Body is required.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      await createAnnouncement({ title: trimmedTitle, body: trimmedBody });
+      setTitle('');
+      setBody('');
+      await loadAnnouncements();
+    } catch (submitErr) {
+      if (submitErr instanceof ApiError) {
+        setSubmitError(submitErr.message);
+      } else {
+        setSubmitError('Failed to create announcement.');
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <main style={{ maxWidth: 900, margin: '2rem auto', fontFamily: 'sans-serif', padding: '0 1rem' }}>
+      <PageHeader user={user} onLogout={onLogout} title="Announcements" />
+
+      <section style={panelStyle}>
+        <h2 style={{ marginTop: 0 }}>Create announcement</h2>
+        <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '0.75rem' }}>
+          <label>
+            Title
+            <input
+              required
+              maxLength={140}
+              type="text"
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              style={{ width: '100%' }}
+            />
+          </label>
+          <label>
+            Body
+            <textarea
+              required
+              value={body}
+              onChange={(event) => setBody(event.target.value)}
+              rows={5}
+              style={{ width: '100%' }}
+            />
+          </label>
+          <div>
+            <button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Creating…' : 'Create announcement'}
+            </button>
+          </div>
+        </form>
+        {submitError ? <p style={{ color: '#b00020' }}>{submitError}</p> : null}
+      </section>
+
+      <section style={panelStyle}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 style={{ marginTop: 0, marginBottom: 0 }}>Latest announcements</h2>
+          <button type="button" onClick={() => void loadAnnouncements()} disabled={loading}>
+            Refresh
+          </button>
+        </div>
+
+        {loading ? <p>Loading announcements…</p> : null}
+        {error ? <p style={{ color: '#b00020' }}>{error}</p> : null}
+
+        {!loading && !error ? (
+          items.length > 0 ? (
+            <div style={{ display: 'grid', gap: '0.75rem' }}>
+              {items.map((item) => (
+                <article key={item.id} style={{ border: '1px solid #e0e0e0', borderRadius: 8, padding: '0.75rem' }}>
+                  <h3 style={{ margin: '0 0 0.35rem' }}>{item.title}</h3>
+                  <small style={{ color: '#666' }}>{formatDate(item.created_at)}</small>
+                  <p style={{ marginBottom: 0, whiteSpace: 'pre-wrap' }}>{item.body}</p>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <p>No announcements yet.</p>
+          )
+        ) : null}
+      </section>
+    </main>
+  );
+}
+
 function PlanForm({
   values,
   onChange,
@@ -866,6 +1016,7 @@ function PageHeader({ user, onLogout, title }: { user: User | null; onLogout: ()
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
         <Link to="/">Dashboard</Link>
         <Link to="/plans">Plans</Link>
+        <Link to="/announcements">Announcements</Link>
         <button type="button" onClick={onLogout}>
           Logout
         </button>

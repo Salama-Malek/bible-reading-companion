@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 
 import { completeReadingForDate, getLocalDateString, getTodayCompletionState } from '@/src/api/reading';
 import { getTodayPlan } from '@/src/api/plans';
+import { getAnnouncements, type Announcement } from '@/src/api/announcements';
 
 type ReadingMethod = 'physical' | 'digital';
 
@@ -14,15 +15,21 @@ export default function HomeScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
 
   const loadHomeData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const [todayPlan, completionState] = await Promise.all([getTodayPlan(), getTodayCompletionState()]);
+      const [todayPlan, completionState, latestAnnouncements] = await Promise.all([
+        getTodayPlan(),
+        getTodayCompletionState(),
+        getAnnouncements(1, 3),
+      ]);
       setPlan(todayPlan);
       setIsCompleted(completionState);
+      setAnnouncements(latestAnnouncements);
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Failed to load home data.');
     } finally {
@@ -134,11 +141,41 @@ export default function HomeScreen() {
         <Text style={styles.markButtonText}>{isSubmitting ? 'Marking…' : 'Mark as Read'}</Text>
       </Pressable>
 
+      <View style={styles.card}>
+        <View style={styles.announcementHeader}>
+          <Text style={styles.sectionTitle}>Announcements</Text>
+          <Pressable onPress={() => router.push('/announcements')}>
+            <Text style={styles.refreshText}>View all</Text>
+          </Pressable>
+        </View>
+        {announcements.length === 0 ? (
+          <Text style={styles.muted}>No announcements yet.</Text>
+        ) : (
+          announcements.map((item) => (
+            <Pressable key={item.id} style={styles.announcementItem} onPress={() => router.push('/announcements')}>
+              <Text style={styles.announcementTitle}>{item.title}</Text>
+              <Text style={styles.muted}>{formatAnnouncementDate(item.created_at)}</Text>
+            </Pressable>
+          ))
+        )}
+      </View>
+
       <Pressable onPress={() => void loadHomeData()} style={styles.refreshButton}>
         <Text style={styles.refreshText}>Refresh</Text>
       </Pressable>
     </View>
   );
+}
+
+
+function formatAnnouncementDate(value: string): string {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleDateString();
 }
 
 const styles = StyleSheet.create({
@@ -220,6 +257,19 @@ const styles = StyleSheet.create({
   },
   muted: {
     color: '#6b7280',
+  },
+  announcementHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  announcementItem: {
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+    paddingTop: 8,
+  },
+  announcementTitle: {
+    fontWeight: '600',
   },
   refreshButton: {
     alignSelf: 'flex-start',

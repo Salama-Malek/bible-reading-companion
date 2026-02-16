@@ -6,6 +6,7 @@ use Api\Auth\AuthService;
 use Api\Controllers\AdminPlansController;
 use Api\Controllers\AdminNotificationsController;
 use Api\Controllers\DevicesController;
+use Api\Controllers\AnnouncementsController;
 use Api\Controllers\PlansController;
 use Api\Controllers\ReadingController;
 use Api\Controllers\VersesController;
@@ -25,6 +26,7 @@ return static function (Router $router): void {
     $readingController = new ReadingController();
     $versesController = new VersesController();
     $devicesController = new DevicesController();
+    $announcementsController = new AnnouncementsController();
     $requireAdmin = new RequireRole('admin');
 
     $router->get('/health', static function (Request $request): void {
@@ -194,6 +196,18 @@ return static function (Router $router): void {
 
     $router->post('/admin/notifications/send-today', static function (Request $request) use ($adminNotificationsController): void {
         $adminNotificationsController->sendToday($request);
+    });
+
+    $router->post('/admin/announcements', static function (Request $request) use ($authMiddleware, $requireAdmin, $announcementsController): void {
+        $authMiddleware($request, static function (Request $authedRequest) use ($requireAdmin, $announcementsController): void {
+            $requireAdmin($authedRequest, static function (Request $adminRequest) use ($announcementsController): void {
+                $announcementsController->create($adminRequest);
+            });
+        });
+    });
+
+    $router->get('/announcements', static function (Request $request) use ($announcementsController): void {
+        $announcementsController->list($request);
     });
 
     $router->get('/auth/me', static function (Request $request) use ($authMiddleware): void {
