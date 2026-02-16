@@ -1,17 +1,19 @@
-import { useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
+  FlatList,
+  ListRenderItemInfo,
   Modal,
   Pressable,
   SafeAreaView,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 
+import { BibleVerse, getBibleChapter } from '@/src/api/bible';
 import { saveVerse } from '@/src/api/verses';
 
 function getParam(value: string | string[] | undefined): string {
@@ -25,23 +27,83 @@ export default function ReaderScreen() {
   const book = getParam(params.book);
   const chapter = getParam(params.chapter);
 
-  const defaultReference = useMemo(() => {
-    if (!book || !chapter) {
-      return '';
-    }
-
-    return `${book} ${chapter}:`;
-  }, [book, chapter]);
-
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [referenceText, setReferenceText] = useState(defaultReference);
+  const [referenceText, setReferenceText] = useState('');
   const [note, setNote] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [verses, setVerses] = useState<BibleVerse[]>([]);
+  const [isLoadingChapter, setIsLoadingChapter] = useState(false);
+  const [chapterError, setChapterError] = useState<string | null>(null);
 
-  const openSaveModal = useCallback(() => {
-    setReferenceText((current) => current || defaultReference);
+  useEffect(() => {
+    let isMounted = true;
+
+    if (!book || !chapter) {
+      setVerses([]);
+      setChapterError('Missing book or chapter. Please open this screen from Home.');
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    setIsLoadingChapter(true);
+    setChapterError(null);
+
+    void getBibleChapter(book, chapter)
+      .then((nextVerses) => {
+        if (!isMounted) {
+          return;
+        }
+
+        setVerses(nextVerses);
+      })
+      .catch((loadError) => {
+        if (!isMounted) {
+          return;
+        }
+
+        const message = loadError instanceof Error ? loadError.message : 'Failed to load chapter.';
+        setVerses([]);
+        setChapterError(message);
+      })
+      .finally(() => {
+        if (!isMounted) {
+          return;
+        }
+
+        setIsLoadingChapter(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [book, chapter]);
+
+  const getReferenceForVerse = useCallback(
+    (verseNumber: number) => {
+      if (!book || !chapter) {
+        return '';
+      }
+
+      return `${book} ${chapter}:${verseNumber}`;
+    },
+    [book, chapter],
+  );
+
+  const handleVerseTap = useCallback(
+    (verseNumber: number) => {
+      setReferenceText(getReferenceForVerse(verseNumber));
+    },
+    [getReferenceForVerse],
+  );
+
+  const openSaveModal = useCallback((verseNumber?: number) => {
+    if (typeof verseNumber === 'number') {
+      setReferenceText(getReferenceForVerse(verseNumber));
+    }
+
     setIsModalVisible(true);
-  }, [defaultReference]);
+  }, [getReferenceForVerse]);
 
   const closeSaveModal = useCallback(() => {
     if (isSaving) {
@@ -73,13 +135,7 @@ export default function ReaderScreen() {
 
       setIsModalVisible(false);
 
-      Alert.alert('Verse saved', 'Your verse has been saved.', [
-        {
-          text: 'View saved verses',
-          onPress: () => router.push('/(tabs)/saved'),
-        },
-        { text: 'OK', style: 'cancel' },
-      ]);
+      Alert.alert('Verse saved', 'Your verse has been saved.');
     } catch (saveError) {
       const message = saveError instanceof Error ? saveError.message : 'Failed to save verse.';
       Alert.alert('Save failed', message);
@@ -90,23 +146,60 @@ export default function ReaderScreen() {
 
   const title = [book, chapter].filter(Boolean).join(' ');
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content}>
+  const renderVerseItem = useCallback(
+    ({ item }: ListRenderItemInfo<BibleVerse>) => (
+      <VerseRow
+        verse={item}
+        onPress={handleVerseTap}
+        onLongPress={openSaveModal}
+        isSelected={referenceText === getReferenceForVerse(item.verse)}
+      />
+    ),
+    [getReferenceForVerse, handleVerseTap, openSaveModal, referenceText],
+  );
+
+  const keyExtractor = useCallback((item: BibleVerse) => String(item.verse), []);
+
+  const listHeader = useMemo(
+    () => (
+      <View style={styles.header}>
         <Text style={styles.title}>{title || 'Reader'}</Text>
         <Text style={styles.subtitle}>{date || 'No date provided'}</Text>
 
-        <View style={styles.readerCard}>
-          <Text style={styles.readerText}>
-            In-app reading content is coming soon. For now, use this screen to track today&apos;s passage and
-            save verse references with notes.
-          </Text>
-        </View>
-
-        <Pressable style={styles.saveButton} onPress={openSaveModal}>
-          <Text style={styles.saveButtonText}>Save Verse</Text>
+        <Pressable style={styles.saveButton} onPress={() => openSaveModal()}>
+          <Text style={styles.saveButtonText}>Save Selected Verse</Text>
         </Pressable>
-      </ScrollView>
+      </View>
+    ),
+    [date, openSaveModal, title],
+  );
+
+  return (
+    <SafeAreaView style={styles.container}>
+      {isLoadingChapter ? (
+        <View style={styles.statusContainer}>
+          <Text style={styles.statusText}>Loading verses…</Text>
+        </View>
+      ) : null}
+
+      {!isLoadingChapter && chapterError ? (
+        <View style={styles.statusContainer}>
+          <Text style={styles.errorText}>{chapterError}</Text>
+        </View>
+      ) : null}
+
+      {!isLoadingChapter && !chapterError ? (
+        <FlatList
+          data={verses}
+          keyExtractor={keyExtractor}
+          renderItem={renderVerseItem}
+          ListHeaderComponent={listHeader}
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          initialNumToRender={12}
+          removeClippedSubviews
+        />
+      ) : null}
 
       <Modal visible={isModalVisible} animationType="slide" transparent onRequestClose={closeSaveModal}>
         <View style={styles.modalOverlay}>
@@ -152,6 +245,35 @@ export default function ReaderScreen() {
   );
 }
 
+type VerseRowProps = {
+  verse: BibleVerse;
+  isSelected: boolean;
+  onPress: (verseNumber: number) => void;
+  onLongPress: (verseNumber: number) => void;
+};
+
+const VerseRow = memo(function VerseRow({ verse, isSelected, onPress, onLongPress }: VerseRowProps) {
+  const handlePress = useCallback(() => {
+    onPress(verse.verse);
+  }, [onPress, verse.verse]);
+
+  const handleLongPress = useCallback(() => {
+    onLongPress(verse.verse);
+  }, [onLongPress, verse.verse]);
+
+  return (
+    <Pressable
+      style={[styles.verseRow, isSelected ? styles.verseRowSelected : null]}
+      onPress={handlePress}
+      onLongPress={handleLongPress}
+      delayLongPress={200}
+    >
+      <Text style={styles.verseNumber}>{verse.verse}</Text>
+      <Text style={styles.verseText}>{verse.text}</Text>
+    </Pressable>
+  );
+});
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -161,6 +283,9 @@ const styles = StyleSheet.create({
     padding: 16,
     gap: 16,
   },
+  header: {
+    gap: 10,
+  },
   title: {
     fontSize: 28,
     fontWeight: '700',
@@ -169,17 +294,43 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     fontSize: 15,
   },
-  readerCard: {
-    borderWidth: 1,
-    borderColor: '#d0d7de',
-    borderRadius: 12,
-    padding: 14,
-    backgroundColor: '#f8fafc',
+  statusContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
   },
-  readerText: {
+  statusText: {
+    color: '#374151',
     fontSize: 16,
-    lineHeight: 24,
+  },
+  errorText: {
+    color: '#b91c1c',
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  verseRow: {
+    flexDirection: 'row',
+    gap: 10,
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    backgroundColor: '#fff',
+  },
+  verseRowSelected: {
+    borderColor: '#1f6feb',
+    backgroundColor: '#eff6ff',
+  },
+  verseNumber: {
+    width: 28,
+    fontWeight: '700',
     color: '#1f2937',
+  },
+  verseText: {
+    flex: 1,
+    color: '#1f2937',
+    lineHeight: 23,
   },
   saveButton: {
     backgroundColor: '#1f6feb',
