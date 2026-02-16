@@ -37,6 +37,19 @@ export type UpsertAdminPlanInput = {
   chapter: number;
 };
 
+export type AdminAnnouncement = {
+  id: number;
+  title: string;
+  body: string;
+  created_at: string;
+  created_by: number;
+};
+
+export type CreateAdminAnnouncementInput = {
+  title: string;
+  body: string;
+};
+
 export type BulkImportFailure = {
   index: number;
   issues: Array<{
@@ -136,5 +149,20 @@ export async function bulkImportPlans(entries: UpsertAdminPlanInput[]): Promise<
   return apiFetch<BulkImportPlansResult>('/admin/plans/bulk-import', {
     method: 'POST',
     body: JSON.stringify({ entries }),
+  });
+}
+
+export async function listAnnouncements(): Promise<AdminAnnouncement[]> {
+  const data = await apiFetch<{ announcements: AdminAnnouncement[] }>('/announcements', {
+    method: 'GET',
+  });
+
+  return data.announcements;
+}
+
+export async function createAnnouncement(input: CreateAdminAnnouncementInput): Promise<void> {
+  await apiFetch<{ created: boolean }>('/admin/announcements', {
+    method: 'POST',
+    body: JSON.stringify(input),
   });
 }
